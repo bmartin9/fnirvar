@@ -82,7 +82,7 @@ else:
 
 ###### OUTPUT TO FILES ###### 
 if save_predictions:
-    np.savetxt(f"predictions_{PBS_ARRAY_INDEX}.csv", predictions, delimiter=',') 
+    np.savetxt(f"predictions-{PBS_ARRAY_INDEX}.csv", predictions, delimiter=',') 
 
 f = open("backtesting_hyp.txt", "w")
 f.write("{\n")
