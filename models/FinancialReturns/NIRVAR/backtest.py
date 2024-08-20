@@ -10,6 +10,7 @@ import numpy as np
 import sys
 import yaml 
 from fnirvar.modeling.train import FactorAdjustment 
+from fnirvar.modeling.train import NIRVAR
 import os
 from numpy.random import default_rng
 
@@ -38,7 +39,7 @@ if use_HPC:
     NUM_ARRAY_INDICES = int(os.environ['NUM_ARRAY_INDICES'])
 else:
     PBS_ARRAY_INDEX = 1
-    NUM_ARRAY_INDICES = 1 
+    NUM_ARRAY_INDICES = 1
 
 # Re-define n_backtest_days to be total number of backtesting days divided by the number of array indices 
 n_backtest_days = int(n_backtest_days_tot/NUM_ARRAY_INDICES)
@@ -67,7 +68,20 @@ if varying_factors:
 
 ###### BACKTESTING ###### 
 if do_NIRVAR_estimation:
-    pass
+    predictions = np.zeros((n_backtest_days, N)) 
+    for i, day in enumerate(days_to_backtest):
+        print(f"Day {day}") 
+        X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
+        if varying_factors:
+            current_r = factor_csv[i]
+        else:
+            current_r = r
+        factor_model = FactorAdjustment(X, current_r, lF)
+        Xi = factor_model.get_idiosyncratic_component()
+        idiosyncratic_model = NIRVAR(Xi=Xi,
+                                     embedding_method=NIRVAR_embedding_method) 
+        Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
+        predictions[i, :] = factor_model.predict_common_component()[:,0] + Xi_hat
 else:
     predictions = np.zeros((n_backtest_days, N)) 
     for i, day in enumerate(days_to_backtest):

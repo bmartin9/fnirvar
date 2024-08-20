@@ -6,7 +6,7 @@ Script defining classes and functions to do estimation and prediction of a facto
 # USAGE: ./train_model.py 
 
 import numpy as np
-from skrmt.ensemble.spectral_law import MarchenkoPasturDistribution
+# from skrmt.ensemble.spectral_law import MarchenkoPasturDistribution
 from numpy.linalg import svd
 from sklearn.mixture import GaussianMixture
 from sklearn.linear_model import LinearRegression
@@ -159,10 +159,9 @@ class NIRVAR():
     Class to do NIRVAR estimation and prediction.
     """
     def __init__(self,
-                random_state : np.random.RandomState,
                 Xi : np.ndarray,
-                d : int, 
-                K : int,
+                d : int = None, 
+                K : int = None,
                 embedding_method : str = "Pearson Correlation",
                 gmm_random_int : int = 432
                 ) -> None:
@@ -183,10 +182,10 @@ class NIRVAR():
         :type embedding_method: str
         """
         self.Xi = Xi 
-        self.d = d if d is not None else self.marchenko_pastur_estimate()  
-        self.K = K if K is not None else self.d 
         self.embedding_method = embedding_method
         self.gmm_random_int = gmm_random_int 
+        self.d = d if d is not None else self.marchenko_pastur_estimate()  
+        self.K = K if K is not None else self.d 
 
     @property
     def T(self):
@@ -257,7 +256,7 @@ class NIRVAR():
         """
         if self.embedding_method == "Pearson Correlation":
             embedding_object = self.pearson_correlations()
-        elif self.embedding_method == "Covariance Matrix"
+        elif self.embedding_method == "Covariance Matrix":
             embedding_object = self.covariance_matrix()
         elif self.embedding_method == "Precision Matrix":
             embedding_object == self.inverse_correlation_matrix()
@@ -322,7 +321,7 @@ class NIRVAR():
         :return: Shape = (N,N,T) For each stock, we have a maximum (this max is not reached do to clustering regularisation) of NQ predictors. There are T training values for each predictor.
         :rtype: np.ndarray 
         """
-        covariates = np.zeros((self.N,self.N,self.T_train),dtype=np.float32)
+        covariates = np.zeros((self.N,self.N,self.T),dtype=np.float32)
         for i in range(self.N):
             c = constrained_array[i,:,None]*(self.Xi.transpose(1,0)) 
             covariates[i] = c
@@ -361,6 +360,6 @@ class NIRVAR():
         Xi_hat = phi_hat @ self.Xi[-1,:]
         return Xi_hat 
     
-    
+
 
         

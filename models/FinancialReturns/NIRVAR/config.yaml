@@ -9,7 +9,7 @@ save_loadings : FALSE # whether to save the loadings
 save_factors : FALSE # whether to save the factors 
 save_predictions : TRUE # whether to save the predictions
 factor_lags : 5
-do_NIRVAR_estimation : FALSE # whether to estimate the idiosyncratic component with the NIRVAR model 
+do_NIRVAR_estimation : TRUE # whether to estimate the idiosyncratic component with the NIRVAR model 
 NIRVAR_embedding_method : 'Pearson Correlation' #One of 'Pearson Correlation' (Default), 'Precision Matrix', 'Covariance Matrix'
 use_HPC : TRUE # whether to use the HPC
 Q : 4 # number of features of data
