@@ -1,11 +1,15 @@
 """ 
-Script defining classes and functions to do estimation abd prediction of a factor + NIRVAR model.
+Script defining classes and functions to do estimation and prediction of a factor + NIRVAR model.
 """
 
 #!/usr/bin/env python3 
 # USAGE: ./train_model.py 
 
 import numpy as np
+from skrmt.ensemble.spectral_law import MarchenkoPasturDistribution
+from numpy.linalg import svd
+from sklearn.mixture import GaussianMixture
+from sklearn.linear_model import LinearRegression
 
 def eigenvalue_ratio():
     """
@@ -118,5 +122,245 @@ class FactorAdjustment():
         predicted_common_component = loadings @ P_hat @ G_hat_t 
         return predicted_common_component 
     
+###### FUNCTIONS FOR COMPUTING BEST FIT MARCENKO-PASTUR DISTRIBUTION ######
     
+def ks_statistic(sigma_squared, data, q):
+    empirical_cdf = np.arange(1, len(data) + 1) / len(data)
+    mpl = MarchenkoPasturDistribution(beta=1, ratio=q, sigma=np.sqrt(sigma_squared) )
+    theoretical_cdf = mpl.cdf(np.sort(data))
+    ks_stat = np.max(np.abs(empirical_cdf - theoretical_cdf))
+    return ks_stat
+
+def exponential_weight_function(empirical_cdf, alpha=5):
+    return np.exp(alpha * empirical_cdf)
+
+# Weighted KS statistic function with exponential weights
+def weighted_ks_statistic(sigma_squared, data, q, alpha=1):
+    sorted_data = np.sort(data)
+    empirical_cdf = np.arange(1, len(data) + 1) / len(data)
+    mpl = MarchenkoPasturDistribution(beta=1, ratio=q, sigma=np.sqrt(sigma_squared) )
+
+    theoretical_cdf = mpl.cdf(sorted_data)
+    
+    # Calculate weights using the exponential weight function
+    weights = exponential_weight_function(empirical_cdf, alpha)
+    
+    # Calculate weighted discrepancies
+    weighted_discrepancies = weights * np.abs(empirical_cdf - theoretical_cdf)
+    
+    # Calculate weighted KS statistic
+    ks_stat = np.sum(weighted_discrepancies)
+    return ks_stat
+
+###### NIRVAR ESTIMATION AND PREDICTION ######
+
+class NIRVAR():
+    """ 
+    Class to do NIRVAR estimation and prediction.
+    """
+    def __init__(self,
+                random_state : np.random.RandomState,
+                Xi : np.ndarray,
+                d : int, 
+                K : int,
+                embedding_method : str = "Pearson Correlation",
+                gmm_random_int : int = 432
+                ) -> None:
+        """ 
+        :param random_state: Random State object. The seed value is set by the user upon instantiation of the Random State object.
+        :type: np.random.RandomState
+
+        :param Xi: Design matrix of shaoe (T, N) 
+        :type Xi: numpy.ndarray 
+
+        :param d: embedding dimension
+        :type d: int
+
+        :param K: Number of Gaussian mixtures used for clustering
+        :type K: int
+
+        :param embedding_method: one of 'Pearson Correlation' (Default), 'Precision Matrix', 'Covariance Matrix' 
+        :type embedding_method: str
+        """
+        self.Xi = Xi 
+        self.d = d if d is not None else self.marchenko_pastur_estimate()  
+        self.K = K if K is not None else self.d 
+        self.embedding_method = embedding_method
+        self.gmm_random_int = gmm_random_int 
+
+    @property
+    def T(self):
+        T = self.Xi.shape[0] 
+        return T
+
+    @property
+    def N(self):
+        N = self.Xi.shape[1] 
+        return N
+        
+    def pearson_correlations(self) -> np.ndarray: 
+        """
+        :return: The (N x N) Pearson correlation matrix. Shape = (N,N)
+        :rtype: numpy.ndarray 
+        """
+        p_corr = np.corrcoef(self.Xi.T) 
+        return p_corr
+    
+    def covariance_matrix(self) -> np.ndarray:
+        """
+            :return: The (N x N) sample covariance matrix. Shape = (N,N)
+            :rtype: numpy.ndarray 
+        """
+            
+        cov_mat = np.cov(self.Xi.T)  
+        return cov_mat
+    
+    def inverse_correlation_matrix(self) -> np.ndarray:
+        """
+            :return: The (N x N) inverse correlation matrix. Shape = (N,N)
+            :rtype: numpy.ndarray 
+        """
+        p_corr = np.corrcoef(self.Xi.T) 
+        prec_mat = np.linalg.inv(p_corr)
+        return prec_mat 
+    
+    def marchenko_pastur_estimate(self) -> int:
+        """
+        :return: Estimated number of "significant" dimensions
+        :rtype: int
+        """
+        if self.embedding_method == 'Pearson Correlation':
+            Sigma = self.pearson_correlations()
+            eigenvalues = np.linalg.eigvals(Sigma)
+            cutoff = (1 + np.sqrt(self.N/self.T))**2
+            d_hat = np.count_nonzero(eigenvalues > cutoff) 
+        elif self.embedding_method == 'Precision Matrix':
+            Sigma = self.inverse_correlation_matrix()
+            eigenvalues = np.linalg.eigvals(Sigma)
+            ratio_limit = self.N/self.T 
+            cutoff = ((1 - np.sqrt(ratio_limit))/(1 - ratio_limit))**2 
+            d_hat = np.count_nonzero(eigenvalues < cutoff) 
+        elif self.embedding_method == 'Covariance Matrix':
+            Sigma = self.pearson_correlations()
+            eigenvalues = np.linalg.eigvals(Sigma)
+            cutoff = (1 + np.sqrt(self.N/self.T))**2
+            d_hat = np.count_nonzero(eigenvalues > cutoff) 
+        else:
+            print("ERROR : Embedding method must be one of Pearson Correlation or Covariance Matrix or Precision Matrix")
+        
+        return d_hat 
+    
+    def embed(self):
+        """ 
+        :return: Embedded points. Shape = (N,d) 
+        :return type: np.ndarray
+        """
+        if self.embedding_method == "Pearson Correlation":
+            embedding_object = self.pearson_correlations()
+        elif self.embedding_method == "Covariance Matrix"
+            embedding_object = self.covariance_matrix()
+        elif self.embedding_method == "Precision Matrix":
+            embedding_object == self.inverse_correlation_matrix()
+        else:
+            print("ERROR : Embedding method in embed() must be one of Pearson Correlation or Covariance Matrix or Precision Matrix")
+
+        U, S, Vh = svd(embedding_object,full_matrices=False) 
+        sorted_indices = np.argsort(np.abs(S))[::-1]
+        largest_indices = sorted_indices[:self.d]
+        Vh_trun = Vh[largest_indices]
+        S_trun = S[largest_indices]
+        embedded_array =  Vh_trun.T@np.diag(S_trun)
+        return embedded_array 
+
+    @staticmethod
+    def groupings_to_2D(input_array : np.ndarray) -> np.ndarray:
+        """ 
+        Turn a 1d array of integers (groupings) into a 2d binary array, A, where 
+        A[i,j] = 1 iff i and j have the same integer value in the 1d groupings array.
+
+        :param input_array: 1d array of integers.
+        :type input_array: np.ndarray
+
+        :return: 2d Representation. Shape = (len(input_array),len(input_array))
+        :rtype: np.ndarray
+        """
+
+        L = len(input_array)
+        A = np.zeros((L,L)) 
+        for i in range(L):
+            for j in range(L): 
+                if input_array[i] == input_array[j]:
+                    A[i][j] = 1 
+                else:
+                    continue 
+        
+        return A 
+    
+    def gmm(self) -> np.ndarray:
+        """
+        GMM clustering. Number of clusters must be pre-specified. EM algorithm is then run.
+
+        :return: similarity_matrix. A binary array with value 1 for the neighboring stocks in the same cluster and 0 otherwise. Shape = (N, N)
+        :rtype: np.ndarray
+
+        :return: labels. Array of integers where each integer labels a k-means cluster. Shape = (Q, N)
+        :rtype: np.ndarray
+        """
+        embedding = self.embed()
+        gmm_labels = GaussianMixture(n_components=self.K, random_state=self.gmm_random_int, init_params='k-means++').fit_predict(embedding)
+        labels = gmm_labels
+        similarity_matrix = self.groupings_to_2D(labels)
+
+        return similarity_matrix, labels
+
+    def covariates(self,constrained_array : np.ndarray) -> np.ndarray: 
+        """ 
+        :param constrained_array: Shape = (N,N) Some constraint on which neighbours to sum up to get a predictor along that feature.
+        :type: np.ndarray 
+
+        :rtype: np.ndarray 
+        :return: Shape = (N,N,T) For each stock, we have a maximum (this max is not reached do to clustering regularisation) of NQ predictors. There are T training values for each predictor.
+        :rtype: np.ndarray 
+        """
+        covariates = np.zeros((self.N,self.N,self.T_train),dtype=np.float32)
+        for i in range(self.N):
+            c = constrained_array[i,:,None]*(self.Xi.transpose(1,0)) 
+            covariates[i] = c
+        return covariates
+    
+    def ols_parameters(self,constrained_array : np.ndarray) -> np.ndarray:
+        """ 
+        :param constrained_array: Some constraint on which neighbours to sum up to get a predictor along that feature. Shape= (N,N)
+        :type: np.ndarray
+
+        :return: ols_params Shape = (N,N)
+        :rtype: np.ndarray
+        """
+        ols_params = np.zeros((self.N,self.N)) 
+        covariates = self.covariates(constrained_array=constrained_array)
+        targets = self.Xi # shape = (T,N) 
+        for i in range(self.N):
+            ols_reg_object = LinearRegression(fit_intercept=False)
+            x = covariates[i].reshape(-1,covariates[i].shape[-1],order='F').T[:-1,:] #shape = (T_train-1,NQ)
+            non_zero_col_indices = np.where(x.any(axis=0))[0] #only do ols on stocks that are connected to node i
+            x_reg = x[:,non_zero_col_indices]
+            y = targets[1:,i] 
+            ols_fit = ols_reg_object.fit(x_reg,y) 
+            ols_params[i,non_zero_col_indices] = ols_fit.coef_  
+        return ols_params 
+
+    def predict_idiosyncratic_component(self):
+        """ 
+        Method to predict the next day idiosyncratic component.
+
+        :return Xi_hat: predicted next day idiosyncratic component. Shape = (N,1) 
+        :return type: np.ndarray  
+        """
+        similarity_matrix, labels = self.gmm() 
+        phi_hat = self.ols_parameters(constrained_array=similarity_matrix)
+        Xi_hat = phi_hat @ self.Xi[-1,:]
+        return Xi_hat 
+    
+    
+
         
