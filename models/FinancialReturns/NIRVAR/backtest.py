@@ -32,6 +32,9 @@ do_NIRVAR_estimation = config['do_NIRVAR_estimation']
 NIRVAR_embedding_method = config['NIRVAR_embedding_method'] 
 use_HPC = config['use_HPC'] 
 Q = config['Q']
+only_NIRVAR = config['only_NIRVAR']
+if only_NIRVAR:
+    do_NIRVAR_estimation = False
 
 ###### ENVIRONMENT VARIABLES ######  
 if use_HPC:
@@ -82,6 +85,15 @@ if do_NIRVAR_estimation:
                                      embedding_method=NIRVAR_embedding_method) 
         Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
         predictions[i, :] = factor_model.predict_common_component()[:,0] + Xi_hat
+elif only_NIRVAR:
+    predictions = np.zeros((n_backtest_days, N)) 
+    for i, day in enumerate(days_to_backtest):
+        print(f"Day {day}") 
+        X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
+        idiosyncratic_model = NIRVAR(Xi=X,
+                                     embedding_method=NIRVAR_embedding_method) 
+        Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
+        predictions[i, :] =  Xi_hat
 else:
     predictions = np.zeros((n_backtest_days, N)) 
     for i, day in enumerate(days_to_backtest):
