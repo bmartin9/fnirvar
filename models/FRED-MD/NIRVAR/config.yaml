@@ -1,0 +1,19 @@
+###### PARAMETERS #######
+SEED : 4436
+n_backtest_days : 240
+first_prediction_day : 479 # first day to start making predictions (python index)
+lookback_window : 479
+varying_factors : FALSE # whether the estimated number of factors changes over the backtesting window
+num_factors : 5 
+save_loadings : FALSE # whether to save the loadings
+save_factors : FALSE # whether to save the factors 
+save_predictions : TRUE # whether to save the predictions
+factor_lags : 5
+do_NIRVAR_estimation : TRUE # whether to estimate the idiosyncratic component with the NIRVAR model 
+NIRVAR_embedding_method : 'Pearson Correlation' #One of 'Pearson Correlation' (Default), 'Precision Matrix', 'Covariance Matrix' 
+use_HPC : FALSE # whether to use the HPC
+Q : 1 # number of features of data
+only_NIRVAR : FALSE # whether to only forecast using NIRVAR
+target_feature : 0
+transaction_cost : 1 # cost of a single transaction in bpts
+quantile : 1 # The top x% largest (in magnitude) predictions where x ∈ [0,1].
