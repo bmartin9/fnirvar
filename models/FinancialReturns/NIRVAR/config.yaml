@@ -1,8 +1,8 @@
 ###### PARAMETERS #######
 SEED : 4436
 n_backtest_days : 4275
-first_prediction_day : 1004 # first day to start making predictions (python index)
-lookback_window : 1004 
+first_prediction_day : 1003 # first day to start making predictions (python index)
+lookback_window : 1003 
 varying_factors : FALSE # whether the estimated number of factors changes over the backtesting window
 num_factors : 5 
 save_loadings : FALSE # whether to save the loadings
@@ -14,3 +14,6 @@ NIRVAR_embedding_method : 'Pearson Correlation' #One of 'Pearson Correlation' (D
 use_HPC : TRUE # whether to use the HPC
 Q : 4 # number of features of data
 only_NIRVAR : TRUE # whether to only forecast using NIRVAR
+target_feature : 1
+transaction_cost : 1 # cost of a single transaction in bpts
+quantile : 1 # The top x% largest (in magnitude) predictions where x ∈ [0,1].
