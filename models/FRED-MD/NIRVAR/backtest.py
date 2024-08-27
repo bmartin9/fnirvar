@@ -13,6 +13,7 @@ from fnirvar.modeling.train import FactorAdjustment
 from fnirvar.modeling.train import NIRVAR
 import os
 from numpy.random import default_rng
+from sklearn.preprocessing import MinMaxScaler
 
 with open(sys.argv[2], "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
@@ -35,6 +36,7 @@ Q = config['Q']
 only_NIRVAR = config['only_NIRVAR']
 if only_NIRVAR:
     do_NIRVAR_estimation = False
+minmax_scaling = config['minmax_scaling']
 
 ###### ENVIRONMENT VARIABLES ######  
 if use_HPC:
@@ -67,52 +69,127 @@ if varying_factors:
     factor_csv = np.genfromtxt(sys.argv[3], delimiter=',')
 
 ###### BACKTESTING ###### 
-if do_NIRVAR_estimation:
-    print("Factors + NIRVAR")
-    predictions = np.zeros((n_backtest_days)) 
-    for i, day in enumerate(days_to_backtest):
-        print(f"Day {day}") 
-        X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
-        if varying_factors:
-            current_r = factor_csv[i]
-        else:
-            current_r = r
-        factor_model = FactorAdjustment(X, current_r, lF)
-        Xi = factor_model.get_idiosyncratic_component()
-        idiosyncratic_model = NIRVAR(Xi=Xi,
-                                     embedding_method=NIRVAR_embedding_method) 
-        Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
-        predictions[i] = factor_model.predict_common_component()[5,0] + Xi_hat[5]
+if minmax_scaling:
 
-        print ("\033[A                             \033[A") 
+    if do_NIRVAR_estimation:
+        print("Factors + NIRVAR")
+        predictions = np.zeros((n_backtest_days)) 
+        for i, day in enumerate(days_to_backtest):
+            print(f"Day {day}") 
+            X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
+            scaler = MinMaxScaler(feature_range=(-1,1)) 
+            scaler.fit(X) 
+            X_train = scaler.transform(X)
+            X_train_mean = np.mean(X_train,axis=0)
+            X_train -= X_train_mean
+            if varying_factors:
+                current_r = factor_csv[i]
+            else:
+                current_r = r
+            factor_model = FactorAdjustment(X_train, current_r, lF)
+            Xi = factor_model.get_idiosyncratic_component()
+            idiosyncratic_model = NIRVAR(Xi=Xi,
+                                        embedding_method=NIRVAR_embedding_method) 
+            Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
+            predictions_scaled = factor_model.predict_common_component()[5,0] + Xi_hat[5]
+            predictions_scaled += X_train_mean[:]
+            predictions_original_space = scaler.inverse_transform(predictions_scaled.reshape(1,-1))
+            predictions[i] = predictions_original_space[0,5]
 
-elif only_NIRVAR:
-    print("Only NIRVAR")
-    predictions = np.zeros((n_backtest_days)) 
-    for i, day in enumerate(days_to_backtest):
-        print(f"Day {day}") 
-        X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
-        idiosyncratic_model = NIRVAR(Xi=X,
-                                     embedding_method=NIRVAR_embedding_method) 
-        Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
-        predictions[i] =  Xi_hat[5]
 
-        print ("\033[A                             \033[A") 
+            print ("\033[A                             \033[A") 
 
-else:
-    print("Only Factors")
-    predictions = np.zeros((n_backtest_days)) 
-    for i, day in enumerate(days_to_backtest):
-        print(f"Day {day}") 
-        X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
-        if varying_factors:
-            current_r = factor_csv[i]
-        else:
-            current_r = r
-        model = FactorAdjustment(X, current_r, lF)
-        predictions[i] = model.predict_common_component()[:,0][5]
+    elif only_NIRVAR:
+        print("Only NIRVAR")
+        predictions = np.zeros((n_backtest_days)) 
+        for i, day in enumerate(days_to_backtest):
+            print(f"Day {day}") 
+            X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
+            scaler = MinMaxScaler(feature_range=(-1,1)) 
+            scaler.fit(X) 
+            X_train = scaler.transform(X)
+            X_train_mean = np.mean(X_train,axis=0)
+            X_train -= X_train_mean
+            idiosyncratic_model = NIRVAR(Xi=X_train,
+                                        embedding_method=NIRVAR_embedding_method) 
+            Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
+            predictions_scaled =  Xi_hat
+            predictions_scaled += X_train_mean[:]
+            predictions_original_space = scaler.inverse_transform(predictions_scaled.reshape(1,-1))
+            predictions[i] = predictions_original_space[0,5]
 
-        print ("\033[A                             \033[A") 
+            print ("\033[A                             \033[A") 
+
+    else:
+        print("Only Factors")
+        predictions = np.zeros((n_backtest_days)) 
+        for i, day in enumerate(days_to_backtest):
+            print(f"Day {day}") 
+            X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
+            scaler = MinMaxScaler(feature_range=(-1,1)) 
+            scaler.fit(X) 
+            X_train = scaler.transform(X)
+            X_train_mean = np.mean(X_train,axis=0)
+            X_train -= X_train_mean
+            if varying_factors:
+                current_r = factor_csv[i]
+            else:
+                current_r = r
+            model = FactorAdjustment(X_train, current_r, lF)
+            predictions_scaled = model.predict_common_component()[:,0]
+            predictions_scaled += X_train_mean[:]
+            predictions_original_space = scaler.inverse_transform(predictions_scaled.reshape(1,-1))
+            predictions[i] = predictions_original_space[0,5]
+
+            print ("\033[A                             \033[A") 
+
+else: 
+    if do_NIRVAR_estimation:
+        print("Factors + NIRVAR")
+        predictions = np.zeros((n_backtest_days)) 
+        for i, day in enumerate(days_to_backtest):
+            print(f"Day {day}") 
+            X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
+            if varying_factors:
+                current_r = factor_csv[i]
+            else:
+                current_r = r
+            factor_model = FactorAdjustment(X, current_r, lF)
+            Xi = factor_model.get_idiosyncratic_component()
+            idiosyncratic_model = NIRVAR(Xi=Xi,
+                                        embedding_method=NIRVAR_embedding_method) 
+            Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
+            predictions[i] = factor_model.predict_common_component()[5,0] + Xi_hat[5]
+
+            print ("\033[A                             \033[A") 
+
+    elif only_NIRVAR:
+        print("Only NIRVAR")
+        predictions = np.zeros((n_backtest_days)) 
+        for i, day in enumerate(days_to_backtest):
+            print(f"Day {day}") 
+            X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
+            idiosyncratic_model = NIRVAR(Xi=X,
+                                        embedding_method=NIRVAR_embedding_method) 
+            Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
+            predictions[i] =  Xi_hat[5]
+
+            print ("\033[A                             \033[A") 
+
+    else:
+        print("Only Factors")
+        predictions = np.zeros((n_backtest_days)) 
+        for i, day in enumerate(days_to_backtest):
+            print(f"Day {day}") 
+            X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
+            if varying_factors:
+                current_r = factor_csv[i]
+            else:
+                current_r = r
+            model = FactorAdjustment(X, current_r, lF)
+            predictions[i] = model.predict_common_component()[:,0][5]
+
+            print ("\033[A                             \033[A") 
 
 
 ###### OUTPUT TO FILES ###### 
