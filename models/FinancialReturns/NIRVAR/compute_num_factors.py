@@ -4,7 +4,7 @@ Outputs csv of integers.
 """
 
 #!/usr/bin/env python3 
-# USAGE: ./compute_num_factors.py <DESIGN_MATRIX>.csv backtesting_config.yaml 
+# USAGE: ./compute_num_factors.py <DESIGN_MATRIX>.csv config.yaml 
 
 import numpy as np
 import sys
@@ -46,6 +46,7 @@ days_to_backtest = [int(first_prediction_day + i) for i in range(n_backtest_days
 num_factors = np.zeros(n_backtest_days_tot, dtype=int)
 
 for i, day in enumerate(days_to_backtest):
+    print(i) 
     X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from
 
     # Compute number of factors

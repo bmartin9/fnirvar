@@ -15,7 +15,7 @@ Q : 4 # number of features of data
 target_feature : 1 # The feature you want to predict
 transaction_cost : 1 # cost of a single transaction in bpts
 quantile : 1 # The top x% largest (in magnitude) predictions where x ∈ [0,1].
-num_factors_method : 'PCp1' # Method used to compute number of factors: one of 'ER', 'PCp1', 'PC_p2'
+num_factors_method : 'PCp2' # Method used to compute number of factors: one of 'ER', 'PCp1', 'PC_p2'
 max_num_factors : 25 # Set the maximum number of possible factors
 factor_model : 'Static' # One of 'None', Static', 
 idiosyncratic_model : 'NIRVAR' # One of 'None', 'NIRVAR'
