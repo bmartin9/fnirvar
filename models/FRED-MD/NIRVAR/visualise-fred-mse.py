@@ -73,7 +73,7 @@ for i in range(len(predictions_list)):
 
 
 
-dates = pd.date_range(start='2000-01-01', end='2019-12-31', freq='M')
+dates = pd.date_range(start='2000-01-01', end='2019-12-31', freq='ME')
 
 fig = go.Figure()
 fig_ratio = go.Figure()
@@ -81,7 +81,7 @@ fig_metric = go.Figure()
 fig_gt_pred = go.Figure() 
 
 
-names = ["NIRVAR","FNETS","GNAR","FARM"]
+names = ["NIRVAR","Factors Only","Factors+NIRVAR","8 Factors Only","8 Factors+NIRVAR"]
 colors = [
     'rgb(55, 126, 184)',   # Plotly Blue
     'rgb(228, 26, 28)',    # Plotly Red

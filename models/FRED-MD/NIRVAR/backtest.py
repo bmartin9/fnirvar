@@ -29,13 +29,12 @@ varying_factors = config['varying_factors']
 save_loadings = config['save_loadings'] 
 save_factors = config['save_factors'] 
 save_predictions = config['save_predictions']
-do_NIRVAR_estimation = config['do_NIRVAR_estimation']
 NIRVAR_embedding_method = config['NIRVAR_embedding_method'] 
 use_HPC = config['use_HPC'] 
 Q = config['Q']
-only_NIRVAR = config['only_NIRVAR']
-if only_NIRVAR:
-    do_NIRVAR_estimation = False
+factor_model = config['factor_model']
+idiosyncratic_model = config['idiosyncratic_model']
+
 minmax_scaling = config['minmax_scaling']
 
 ###### ENVIRONMENT VARIABLES ######  
@@ -66,13 +65,13 @@ N = int(N)
 
 ###### READ IN FACTORS ######
 if varying_factors:
-    factor_csv = np.genfromtxt(sys.argv[3], delimiter=',')
+    factor_csv = np.genfromtxt(sys.argv[3], delimiter=',',dtype='int')
 
 ###### BACKTESTING ###### 
 if minmax_scaling:
 
-    if do_NIRVAR_estimation:
-        print("Factors + NIRVAR")
+    if factor_model == 'Static' and idiosyncratic_model == 'NIRVAR':
+        print("Static Factors + NIRVAR") 
         predictions = np.zeros((n_backtest_days)) 
         for i, day in enumerate(days_to_backtest):
             print(f"Day {day}") 
@@ -99,7 +98,7 @@ if minmax_scaling:
 
             print ("\033[A                             \033[A") 
 
-    elif only_NIRVAR:
+    elif factor_model == 'None' and idiosyncratic_model == 'NIRVAR':
         print("Only NIRVAR")
         predictions = np.zeros((n_backtest_days)) 
         for i, day in enumerate(days_to_backtest):
@@ -120,7 +119,7 @@ if minmax_scaling:
 
             print ("\033[A                             \033[A") 
 
-    else:
+    elif factor_model == 'Static' and idiosyncratic_model == 'None':
         print("Only Factors")
         predictions = np.zeros((n_backtest_days)) 
         for i, day in enumerate(days_to_backtest):
@@ -144,8 +143,8 @@ if minmax_scaling:
             print ("\033[A                             \033[A") 
 
 else: 
-    if do_NIRVAR_estimation:
-        print("Factors + NIRVAR")
+    if factor_model == 'Static' and idiosyncratic_model == 'NIRVAR':
+        print("Static Factors + NIRVAR")
         predictions = np.zeros((n_backtest_days)) 
         for i, day in enumerate(days_to_backtest):
             print(f"Day {day}") 
@@ -163,7 +162,7 @@ else:
 
             print ("\033[A                             \033[A") 
 
-    elif only_NIRVAR:
+    elif factor_model == 'None' and idiosyncratic_model == 'NIRVAR':
         print("Only NIRVAR")
         predictions = np.zeros((n_backtest_days)) 
         for i, day in enumerate(days_to_backtest):
@@ -176,7 +175,7 @@ else:
 
             print ("\033[A                             \033[A") 
 
-    else:
+    elif factor_model == 'Static' and idiosyncratic_model == 'None':
         print("Only Factors")
         predictions = np.zeros((n_backtest_days)) 
         for i, day in enumerate(days_to_backtest):

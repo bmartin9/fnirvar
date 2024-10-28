@@ -28,13 +28,11 @@ varying_factors = config['varying_factors']
 save_loadings = config['save_loadings'] 
 save_factors = config['save_factors'] 
 save_predictions = config['save_predictions']
-do_NIRVAR_estimation = config['do_NIRVAR_estimation']
 NIRVAR_embedding_method = config['NIRVAR_embedding_method'] 
 use_HPC = config['use_HPC'] 
 Q = config['Q']
-only_NIRVAR = config['only_NIRVAR']
-if only_NIRVAR:
-    do_NIRVAR_estimation = False
+factor_model = config['factor_model']
+idiosyncratic_model = config['idiosyncratic_model'] 
 
 ###### ENVIRONMENT VARIABLES ######  
 if use_HPC:
@@ -70,7 +68,7 @@ if varying_factors:
     factor_csv = np.genfromtxt(sys.argv[3], delimiter=',')
 
 ###### BACKTESTING ###### 
-if do_NIRVAR_estimation:
+if factor_model == 'Static' and idiosyncratic_model == 'NIRVAR':
     predictions = np.zeros((n_backtest_days, N)) 
     for i, day in enumerate(days_to_backtest):
         print(f"Day {day}") 
@@ -85,7 +83,8 @@ if do_NIRVAR_estimation:
                                      embedding_method=NIRVAR_embedding_method) 
         Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
         predictions[i, :] = factor_model.predict_common_component()[:,0] + Xi_hat
-elif only_NIRVAR:
+
+elif factor_model == 'None' and idiosyncratic_model == 'NIRVAR':
     predictions = np.zeros((n_backtest_days, N)) 
     for i, day in enumerate(days_to_backtest):
         print(f"Day {day}") 
@@ -94,7 +93,8 @@ elif only_NIRVAR:
                                      embedding_method=NIRVAR_embedding_method) 
         Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
         predictions[i, :] =  Xi_hat
-else:
+        
+elif factor_model == 'Static' and idiosyncratic_model == 'None':
     predictions = np.zeros((n_backtest_days, N)) 
     for i, day in enumerate(days_to_backtest):
         print(f"Day {day}") 
