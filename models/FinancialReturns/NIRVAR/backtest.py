@@ -63,7 +63,7 @@ if N != int(N):
 N = int(N)
 
 Xs = np.reshape(Xs,(T,N,Q),order='F')
-Xs = Xs[:,:,1] #prCLCL 
+Xs = Xs[:,:,1] #pvCLCL 
 
 ###### READ IN FACTORS ######
 if varying_factors:
