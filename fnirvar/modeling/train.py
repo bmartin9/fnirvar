@@ -282,15 +282,22 @@ class FactorAdjustment():
         """
         Function to estimate the loadings of the common component.
         """
-        evecs = np.sqrt(self.N)*np.linalg.eigh(self.X.T @ self.X / self.T)[1][:, -self.r:] # Eigenvectors of the covariance matrix corresponding to the r largest eigenvalues 
-        return evecs 
+        if self.N > self.T:
+            factors = self.static_factors()
+            loadings = self.X.T @ factors / self.T 
+        else:
+            loadings = np.sqrt(self.N)*np.linalg.eigh(self.X.T @ self.X / self.T)[1][:, -self.r:] # Eigenvectors of the covariance matrix corresponding to the r largest eigenvalues 
+        return loadings
     
     def static_factors(self):  
         """
         Function to estimate the factors of the common component.
         """
-        loadings = self.loadings()
-        factors = self.X @ loadings / self.N 
+        if self.N > self.T:
+            factors = np.sqrt(self.T)*np.linalg.eigh(self.X @ self.X.T / self.N)[1][:, -self.r:] 
+        else:
+            loadings = self.loadings()
+            factors = self.X @ loadings / self.N 
         return factors 
     
     def factor_linear_model(self):
