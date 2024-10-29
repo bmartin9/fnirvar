@@ -6,7 +6,7 @@
 export NUM_ARRAY_INDICES=75
 
 module load anaconda3/personal
-source activate RegularisedVAR
+source activate fnirvar
 
 export DESIGN_FILE='../../../data/FinancialReturns/processed/stocks_no_market_cleaned.csv'
 export OUTPUT_DIRECTORY='5factors-5lags'

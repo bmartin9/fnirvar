@@ -3,7 +3,7 @@
 #PBS -l select=1:ncpus=1:mem=8gb
 
 module load anaconda3/personal
-source activate RegularisedVAR
+source activate fnirvar
 
 export DESIGN_FILE='../../../data/FinancialReturns/processed/stocks_no_market_cleaned.csv'
 cd $PBS_O_WORKDIR
