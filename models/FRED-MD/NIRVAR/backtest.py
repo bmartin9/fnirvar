@@ -1,5 +1,5 @@
 """ 
-Script to do backtesting for FRED-MD. Outputs csv files containing predictions hyperparameters.txt 
+Script to do backtesting for FRED-MD. Outputs csv files containing predictions and hyperparameters.txt 
 NOTE: It is assumed that the backtest_design input file is clean: no NA values and has shape (T,N) 
 """
 
@@ -34,7 +34,6 @@ use_HPC = config['use_HPC']
 Q = config['Q']
 factor_model = config['factor_model']
 idiosyncratic_model = config['idiosyncratic_model']
-
 minmax_scaling = config['minmax_scaling']
 
 ###### ENVIRONMENT VARIABLES ######  
@@ -90,11 +89,10 @@ if minmax_scaling:
             idiosyncratic_model = NIRVAR(Xi=Xi,
                                         embedding_method=NIRVAR_embedding_method) 
             Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
-            predictions_scaled = factor_model.predict_common_component()[5,0] + Xi_hat[5]
+            predictions_scaled = factor_model.predict_common_component()[:,0] + Xi_hat[:]
             predictions_scaled += X_train_mean[:]
             predictions_original_space = scaler.inverse_transform(predictions_scaled.reshape(1,-1))
             predictions[i] = predictions_original_space[0,5]
-
 
             print ("\033[A                             \033[A") 
 
