@@ -9,9 +9,10 @@ module load anaconda3/personal
 source activate fnirvar
 
 export DESIGN_FILE='../../../data/FinancialReturns/processed/stocks_no_market_cleaned.csv'
-export OUTPUT_DIRECTORY='5factors-5lags'
+export NUM_FACTORS='compute_num_factors.py'
+export OUTPUT_DIRECTORY='Factors+NIRVAR'
 cd $PBS_O_WORKDIR
-python backtest.py $DESIGN_FILE config.yaml
+python backtest.py $DESIGN_FILE config.yaml $NUM_FACTORS 
 
 NUM_FILES_CREATED_SO_FAR=$(find . -maxdepth 1 -type f -name 'predictions-*' 2>/dev/null | wc -l)
 echo $NUM_FILES_CREATED_SO_FAR 

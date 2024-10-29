@@ -47,7 +47,7 @@ n_backtest_days = int(n_backtest_days_tot/NUM_ARRAY_INDICES)
 
 # Get a list of days to do backtesting on
 days_to_backtest = [int(first_prediction_day + i + (n_backtest_days)*(PBS_ARRAY_INDEX-1)) for i in range(n_backtest_days)]
-print(f"Days to backtest: {days_to_backtest}")
+# print(f"Days to backtest: {days_to_backtest}")
 
 random_state = default_rng(seed=SEED)
 
@@ -65,7 +65,7 @@ Xs = Xs[:,:,1] #pvCLCL
 
 ###### READ IN FACTORS ######
 if varying_factors:
-    factor_csv = np.genfromtxt(sys.argv[3], delimiter=',')
+    factor_csv = np.genfromtxt(sys.argv[3], delimiter=',',dtype='int')
 
 ###### BACKTESTING ###### 
 if factor_model == 'Static' and idiosyncratic_model == 'NIRVAR':
