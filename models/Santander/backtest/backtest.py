@@ -30,6 +30,7 @@ varying_factors = config['varying_factors']
 save_loadings = config['save_loadings'] 
 save_factors = config['save_factors'] 
 save_predictions = config['save_predictions']
+save_labels = config['save_labels']
 NIRVAR_embedding_method = config['NIRVAR_embedding_method'] 
 use_HPC = config['use_HPC'] 
 Q = config['Q']
@@ -72,6 +73,7 @@ if minmax_scaling:
     if factor_model == 'Static' and idiosyncratic_model == 'NIRVAR':
         print("Static Factors + NIRVAR") 
         predictions = np.zeros((n_backtest_days,N)) 
+        labels_hat = np.zeros((n_backtest_days,N)) 
         for i, day in enumerate(days_to_backtest):
             print(f"Day {day}") 
             X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
@@ -95,12 +97,15 @@ if minmax_scaling:
             predictions_original_space = scaler.inverse_transform(predictions_scaled.reshape(1,-1))
             predictions[i] = predictions_original_space[0,:] + X[-1] # predict the log number of rides, not the first differences of this
 
+            if save_labels:
+                labels_hat[i] = idiosyncratic_model.get_NIRVAR_gmm_labels()
 
             print ("\033[A                             \033[A") 
 
     elif factor_model == 'None' and idiosyncratic_model == 'NIRVAR':
         print("Only NIRVAR")
         predictions = np.zeros((n_backtest_days,N)) 
+        labels_hat = np.zeros((n_backtest_days,N)) 
         for i, day in enumerate(days_to_backtest):
             print(f"Day {day}") 
             X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
@@ -117,6 +122,9 @@ if minmax_scaling:
             predictions_scaled += X_train_mean[:]
             predictions_original_space = scaler.inverse_transform(predictions_scaled.reshape(1,-1))
             predictions[i] = predictions_original_space[0,:] + X[-1] 
+
+            if save_labels:
+                labels_hat[i] = idiosyncratic_model.get_NIRVAR_gmm_labels()
 
             print ("\033[A                             \033[A") 
 
@@ -181,6 +189,7 @@ else:
     if factor_model == 'Static' and idiosyncratic_model == 'NIRVAR':
         print("Static Factors + NIRVAR")
         predictions = np.zeros((n_backtest_days,N)) 
+        labels_hat = np.zeros((n_backtest_days,N)) 
         for i, day in enumerate(days_to_backtest):
             print(f"Day {day}") 
             X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
@@ -196,11 +205,15 @@ else:
             Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
             predictions[i] = factor_model.predict_common_component()[:,0] + Xi_hat[:] + X[-1] 
 
+            if save_labels:
+                labels_hat[i] = idiosyncratic_model.get_NIRVAR_gmm_labels()
+
             print ("\033[A                             \033[A") 
 
     elif factor_model == 'None' and idiosyncratic_model == 'NIRVAR':
         print("Only NIRVAR")
         predictions = np.zeros((n_backtest_days,N)) 
+        labels_hat = np.zeros((n_backtest_days,N)) 
         for i, day in enumerate(days_to_backtest):
             print(f"Day {day}") 
             X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
@@ -209,6 +222,9 @@ else:
                                         embedding_method=NIRVAR_embedding_method) 
             Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
             predictions[i] =  Xi_hat[:] + X[-1]
+
+            if save_labels:
+                labels_hat[i] = idiosyncratic_model.get_NIRVAR_gmm_labels()
 
             print ("\033[A                             \033[A") 
 
@@ -258,6 +274,9 @@ else:
 ###### OUTPUT TO FILES ###### 
 if save_predictions:
     np.savetxt(f"predictions-{PBS_ARRAY_INDEX}.csv", predictions, delimiter=',') 
+
+if save_labels and idiosyncratic_model == "NIRVAR":
+    np.savetxt(f"labels_hat-{PBS_ARRAY_INDEX}.csv", labels_hat, delimiter=',', fmt='%d') 
 
 f = open("backtesting_hyp.txt", "w")
 f.write("{\n")

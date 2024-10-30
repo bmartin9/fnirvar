@@ -8,7 +8,7 @@ Script to visualise the MSE between predicted IP and realised IP.
 import sys
 import numpy as np 
 import pandas as pd
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import root_mean_squared_error
 import plotly.graph_objs as go
 from datetime import datetime
 import time

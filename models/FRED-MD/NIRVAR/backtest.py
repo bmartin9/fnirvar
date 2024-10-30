@@ -11,6 +11,7 @@ import sys
 import yaml 
 from fnirvar.modeling.train import FactorAdjustment 
 from fnirvar.modeling.train import NIRVAR
+from fnirvar.modeling.train import LASSO
 import os
 from numpy.random import default_rng
 from sklearn.preprocessing import MinMaxScaler
@@ -29,12 +30,16 @@ varying_factors = config['varying_factors']
 save_loadings = config['save_loadings'] 
 save_factors = config['save_factors'] 
 save_predictions = config['save_predictions']
+save_labels = config['save_labels']
 NIRVAR_embedding_method = config['NIRVAR_embedding_method'] 
 use_HPC = config['use_HPC'] 
 Q = config['Q']
 factor_model = config['factor_model']
 idiosyncratic_model = config['idiosyncratic_model']
 minmax_scaling = config['minmax_scaling']
+LASSO_penalty = config['LASSO_penalty']
+LASSO_hyperparameter_tuning = config['LASSO_hyperparameter_tuning']
+
 
 ###### ENVIRONMENT VARIABLES ######  
 if use_HPC:
@@ -72,6 +77,7 @@ if minmax_scaling:
     if factor_model == 'Static' and idiosyncratic_model == 'NIRVAR':
         print("Static Factors + NIRVAR") 
         predictions = np.zeros((n_backtest_days)) 
+        labels_hat = np.zeros((n_backtest_days,N)) 
         for i, day in enumerate(days_to_backtest):
             print(f"Day {day}") 
             X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
@@ -94,11 +100,15 @@ if minmax_scaling:
             predictions_original_space = scaler.inverse_transform(predictions_scaled.reshape(1,-1))
             predictions[i] = predictions_original_space[0,5]
 
+            if save_labels:
+                labels_hat[i] = idiosyncratic_model.get_NIRVAR_gmm_labels()
+
             print ("\033[A                             \033[A") 
 
     elif factor_model == 'None' and idiosyncratic_model == 'NIRVAR':
         print("Only NIRVAR")
         predictions = np.zeros((n_backtest_days)) 
+        labels_hat = np.zeros((n_backtest_days,N)) 
         for i, day in enumerate(days_to_backtest):
             print(f"Day {day}") 
             X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
@@ -114,6 +124,9 @@ if minmax_scaling:
             predictions_scaled += X_train_mean[:]
             predictions_original_space = scaler.inverse_transform(predictions_scaled.reshape(1,-1))
             predictions[i] = predictions_original_space[0,5]
+
+            if save_labels:
+                labels_hat[i] = idiosyncratic_model.get_NIRVAR_gmm_labels()
 
             print ("\033[A                             \033[A") 
 
@@ -140,10 +153,43 @@ if minmax_scaling:
 
             print ("\033[A                             \033[A") 
 
+    elif factor_model == 'Static' and idiosyncratic_model == 'LASSO':
+        print("Static Factors + LASSO")  
+        predictions = np.zeros((n_backtest_days,N)) 
+        for i, day in enumerate(days_to_backtest):
+            print(f"Day {day}") 
+            X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
+            scaler = MinMaxScaler(feature_range=(-1,1)) 
+            scaler.fit(X) 
+            X_train = scaler.transform(X)
+            X_train_mean = np.mean(X_train,axis=0)
+            X_train -= X_train_mean
+            if varying_factors:
+                current_r = factor_csv[i]
+            else:
+                current_r = r
+            factor_model = FactorAdjustment(X_train, current_r, lF)
+            Xi = factor_model.get_idiosyncratic_component()
+            idiosyncratic_model = LASSO(Xi=Xi) 
+            if LASSO_hyperparameter_tuning == 'None' :
+                idiosyncratic_model.fit_lasso(alpha=LASSO_penalty[0])
+            elif LASSO_hyperparameter_tuning == 'CV' : 
+                idiosyncratic_model.fit_lasso_cv(alpha_values=LASSO_penalty)
+            elif LASSO_hyperparameter_tuning == 'BIC' : 
+                idiosyncratic_model.fit_lasso_bic(alpha_values=LASSO_penalty)
+            Xi_hat = idiosyncratic_model.predict_idiosyncratic_component(X_new=Xi[-1,None]) 
+            predictions_scaled = factor_model.predict_common_component()[:,0] + Xi_hat[:]
+            predictions_scaled += X_train_mean[:]
+            predictions_original_space = scaler.inverse_transform(predictions_scaled.reshape(1,-1))
+            predictions[i] = predictions_original_space[0,:] + X[-1] # predict the log number of rides, not the first differences of this
+
+            print ("\033[A                             \033[A") 
+
 else: 
     if factor_model == 'Static' and idiosyncratic_model == 'NIRVAR':
         print("Static Factors + NIRVAR")
         predictions = np.zeros((n_backtest_days)) 
+        labels_hat = np.zeros((n_backtest_days,N)) 
         for i, day in enumerate(days_to_backtest):
             print(f"Day {day}") 
             X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
@@ -158,11 +204,15 @@ else:
             Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
             predictions[i] = factor_model.predict_common_component()[5,0] + Xi_hat[5]
 
+            if save_labels:
+                labels_hat[i] = idiosyncratic_model.get_NIRVAR_gmm_labels()
+
             print ("\033[A                             \033[A") 
 
     elif factor_model == 'None' and idiosyncratic_model == 'NIRVAR':
         print("Only NIRVAR")
         predictions = np.zeros((n_backtest_days)) 
+        labels_hat = np.zeros((n_backtest_days,N)) 
         for i, day in enumerate(days_to_backtest):
             print(f"Day {day}") 
             X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
@@ -170,6 +220,9 @@ else:
                                         embedding_method=NIRVAR_embedding_method) 
             Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
             predictions[i] =  Xi_hat[5]
+
+            if save_labels:
+                labels_hat[i] = idiosyncratic_model.get_NIRVAR_gmm_labels()
 
             print ("\033[A                             \033[A") 
 
@@ -188,10 +241,40 @@ else:
 
             print ("\033[A                             \033[A") 
 
+    elif factor_model == 'Static' and idiosyncratic_model == 'LASSO':
+        print("Static Factors + LASSO")  
+        predictions = np.zeros((n_backtest_days,N)) 
+        for i, day in enumerate(days_to_backtest):
+            print(f"Day {day}") 
+            X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
+            if varying_factors:
+                current_r = factor_csv[i]
+            else:
+                current_r = r
+            factor_model = FactorAdjustment(X, current_r, lF)
+            Xi = factor_model.get_idiosyncratic_component()
+            idiosyncratic_model = LASSO(Xi=Xi) 
+            if LASSO_hyperparameter_tuning == 'None' :
+                idiosyncratic_model.fit_lasso(alpha=LASSO_penalty[0])
+            elif LASSO_hyperparameter_tuning == 'CV' : 
+                idiosyncratic_model.fit_lasso_cv(alpha_values=LASSO_penalty)
+            elif LASSO_hyperparameter_tuning == 'BIC' : 
+                idiosyncratic_model.fit_lasso_bic(alpha_values=LASSO_penalty)
+            Xi_hat = idiosyncratic_model.predict_idiosyncratic_component(X_new=Xi[-1,None]) 
+            predictions_diff = factor_model.predict_common_component()[:,0] + Xi_hat[:]
+            predictions[i] = predictions_diff + X[-1] # predict the log number of rides, not the first differences of this
+
+            print ("\033[A                             \033[A") 
+
+
 
 ###### OUTPUT TO FILES ###### 
 if save_predictions:
     np.savetxt(f"predictions-{PBS_ARRAY_INDEX}.csv", predictions, delimiter=',') 
+
+if save_labels and idiosyncratic_model == "NIRVAR":
+    np.savetxt(f"labels_hat-{PBS_ARRAY_INDEX}.csv", labels_hat, delimiter=',', fmt='%d') 
+
 
 f = open("backtesting_hyp.txt", "w")
 f.write("{\n")

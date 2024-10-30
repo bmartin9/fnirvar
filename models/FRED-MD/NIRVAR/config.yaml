@@ -4,11 +4,12 @@ n_backtest_days : 240
 first_prediction_day : 479 # first day to start making predictions (python index)
 lookback_window : 479
 varying_factors : FALSE # whether the estimated number of factors changes over the backtesting window
-num_factors : 8
+num_factors : 1
 save_loadings : FALSE # whether to save the loadings
 save_factors : FALSE # whether to save the factors 
 save_predictions : TRUE # whether to save the predictions
-factor_lags : 5
+save_labels : TRUE # whether to save the nirvar estimated GMM cluster labels
+factor_lags : 24
 NIRVAR_embedding_method : 'Pearson Correlation' #One of 'Pearson Correlation' (Default), 'Precision Matrix', 'Covariance Matrix' 
 use_HPC : FALSE # whether to use the HPC
 Q : 1 # number of features of data
@@ -17,6 +18,8 @@ transaction_cost : 1 # cost of a single transaction in bpts
 quantile : 1 # The top x% largest (in magnitude) predictions where x ∈ [0,1].
 minmax_scaling : TRUE # Whether to normalise the individual time series to the range [-1,1]
 factor_model : 'Static' # One of 'None', Static', 
-idiosyncratic_model : 'NIRVAR' # One of 'None', 'NIRVAR'
-num_factors_method : 'PCp2' # Method used to compute number of factors: one of 'ER', 'PCp1', 'PCp2'
+idiosyncratic_model : 'LASSO' # One of 'None', 'NIRVAR'
+num_factors_method : 'GR' # Method used to compute number of factors: one of 'ER', 'PCp1', 'PCp2'
 max_num_factors : 25 # Set the maximum number of possible factors
+LASSO_penalty : [0.01] # List of penalties to use in your hyperparameter grid search. 
+LASSO_hyperparameter_tuning : 'None' # One of 'None', 'CV' , 'BIC' 

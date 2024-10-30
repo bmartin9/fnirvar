@@ -9,7 +9,8 @@ Outputs csv of integers.
 import numpy as np
 import sys
 import yaml 
-from fnirvar.modeling.train import eigenvalue_ratio_test
+from fnirvar.modeling.train import ER
+from fnirvar.modeling.train import GR
 from fnirvar.modeling.train import baing
 import os
 from numpy.random import default_rng
@@ -57,8 +58,11 @@ for i, day in enumerate(days_to_backtest):
 
     # Compute number of factors
     if num_factors_method == 'ER':
-        r, _, _ = eigenvalue_ratio_test(X,kmax=max_num_factors)
+        r = ER(X,kmax=max_num_factors)
 
+    elif num_factors_method == 'GR':
+        r = GR(X,kmax=max_num_factors)
+    
     elif num_factors_method == 'PCp1':
         r, _, _, _ = baing(X=X,kmax=max_num_factors,jj=1) 
 

@@ -71,6 +71,76 @@ def eigenvalue_ratio_test(X, kmax=None):
     
     return k_er, er_ratios, eigenvalues
 
+def ER(X : np.ndarray, kmax : int) -> None : 
+    """ 
+    :param X: Design matrix of shape (T,N)
+    :type X: np.ndarray 
+
+    :param kmax: maximum possible number of factors 
+    :type kmax: int 
+
+    :return k_star: chosen number of factors 
+    :rtype int: 
+    """
+
+    T = X.shape[0] 
+    N = X.shape[1] 
+
+    if N > T:
+        S = X@X.T / N*T 
+    else:
+        S = X.T@X / N*T 
+
+    eigenvalues = linalg.eigvalsh(S)
+    eigenvalues = np.sort(eigenvalues)[::-1]  # Sort in descending order 
+
+    er_ratios = np.zeros(kmax)
+    for k in range(kmax):
+        er_ratios[k] = eigenvalues[k] / eigenvalues[k + 1]
+
+    k_star = np.argmax(er_ratios) + 1
+
+    return k_star 
+
+def GR(X : np.ndarray, kmax : int) -> None : 
+    """ 
+    :param X: Design matrix of shape (T,N)
+    :type X: np.ndarray 
+
+    :param kmax: maximum possible number of factors 
+    :type kmax: int 
+
+    :return k_star: chosen number of factors 
+    :rtype int: 
+    """
+
+    T = X.shape[0] 
+    N = X.shape[1] 
+
+    if N > T:
+        S = X@X.T / N*T 
+    else:
+        S = X.T@X / N*T 
+
+    eigenvalues = linalg.eigvalsh(S)
+    eigenvalues = np.sort(eigenvalues)[::-1]  # Sort in descending order 
+    V = np.cumsum(eigenvalues[::-1])[::-1]
+
+    er_ratios = np.zeros(kmax)
+    for k in range(kmax):
+        V_k = V[k+1] 
+        V_k_plus1 = V[k+2]
+        er_ratios[k] = np.log(1 + (eigenvalues[k]/V_k)) / np.log(1 + (eigenvalues[k + 1]/V_k_plus1))
+
+    k_star = np.argmax(er_ratios) + 1
+
+    return k_star 
+    
+
+    
+
+
+
 def minindc(X):
     ''' =========================================================================
      takes np <-> returns np
@@ -518,7 +588,7 @@ class NIRVAR():
         :return: similarity_matrix. A binary array with value 1 for the neighboring stocks in the same cluster and 0 otherwise. Shape = (N, N)
         :rtype: np.ndarray
 
-        :return: labels. Array of integers where each integer labels a k-means cluster. Shape = (Q, N)
+        :return: labels. Array of integers where each integer labels a GMM cluster. Shape = (Q, N)
         :rtype: np.ndarray
         """
         embedding = self.embed()
@@ -575,6 +645,16 @@ class NIRVAR():
         phi_hat = self.ols_parameters(constrained_array=similarity_matrix)
         Xi_hat = phi_hat @ self.Xi[-1,:]
         return Xi_hat 
+    
+    def get_NIRVAR_gmm_labels(self):
+        """ 
+        Method to retrieve the NIRAR GMM cluster labels.
+
+        :return: labels. Array of integers where each integer labels a GMM cluster. Shape = (Q, N)
+        :rtype: np.ndarray
+        """
+        similarity_matrix, labels = self.gmm() 
+        return labels 
     
 class LASSO():
     "Class to do LASSO estimation and prediction."

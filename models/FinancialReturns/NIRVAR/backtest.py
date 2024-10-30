@@ -13,6 +13,7 @@ from fnirvar.modeling.train import FactorAdjustment
 from fnirvar.modeling.train import NIRVAR
 import os
 from numpy.random import default_rng
+from fnirvar.modeling.train import LASSO
 
 with open(sys.argv[2], "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
@@ -28,11 +29,14 @@ varying_factors = config['varying_factors']
 save_loadings = config['save_loadings'] 
 save_factors = config['save_factors'] 
 save_predictions = config['save_predictions']
+save_labels = config['save_labels']
 NIRVAR_embedding_method = config['NIRVAR_embedding_method'] 
 use_HPC = config['use_HPC'] 
 Q = config['Q']
 factor_model = config['factor_model']
 idiosyncratic_model = config['idiosyncratic_model'] 
+LASSO_penalty = config['LASSO_penalty']
+LASSO_hyperparameter_tuning = config['LASSO_hyperparameter_tuning']
 
 ###### ENVIRONMENT VARIABLES ######  
 if use_HPC:
@@ -70,6 +74,7 @@ if varying_factors:
 ###### BACKTESTING ###### 
 if factor_model == 'Static' and idiosyncratic_model == 'NIRVAR':
     predictions = np.zeros((n_backtest_days, N)) 
+    labels_hat = np.zeros((n_backtest_days,N)) 
     for i, day in enumerate(days_to_backtest):
         print(f"Day {day}") 
         X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
@@ -84,8 +89,12 @@ if factor_model == 'Static' and idiosyncratic_model == 'NIRVAR':
         Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
         predictions[i, :] = factor_model.predict_common_component()[:,0] + Xi_hat
 
+        if save_labels:
+            labels_hat[i] = idiosyncratic_model.get_NIRVAR_gmm_labels()
+
 elif factor_model == 'None' and idiosyncratic_model == 'NIRVAR':
     predictions = np.zeros((n_backtest_days, N)) 
+    labels_hat = np.zeros((n_backtest_days,N)) 
     for i, day in enumerate(days_to_backtest):
         print(f"Day {day}") 
         X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
@@ -93,6 +102,9 @@ elif factor_model == 'None' and idiosyncratic_model == 'NIRVAR':
                                      embedding_method=NIRVAR_embedding_method) 
         Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
         predictions[i, :] =  Xi_hat
+
+        if save_labels:
+            labels_hat[i] = idiosyncratic_model.get_NIRVAR_gmm_labels()
         
 elif factor_model == 'Static' and idiosyncratic_model == 'None':
     predictions = np.zeros((n_backtest_days, N)) 
@@ -106,9 +118,34 @@ elif factor_model == 'Static' and idiosyncratic_model == 'None':
         model = FactorAdjustment(X, current_r, lF)
         predictions[i, :] = model.predict_common_component()[:,0] 
 
+elif factor_model == 'Static' and idiosyncratic_model == 'LASSO':
+    print("Static Factors + LASSO")  
+    predictions = np.zeros((n_backtest_days,N)) 
+    for i, day in enumerate(days_to_backtest):
+        print(f"Day {day}") 
+        X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
+        if varying_factors:
+            current_r = factor_csv[i]
+        else:
+            current_r = r
+        factor_model = FactorAdjustment(X, current_r, lF)
+        Xi = factor_model.get_idiosyncratic_component()
+        idiosyncratic_model = LASSO(Xi=Xi) 
+        if LASSO_hyperparameter_tuning == 'None' :
+            idiosyncratic_model.fit_lasso(alpha=LASSO_penalty[0])
+        elif LASSO_hyperparameter_tuning == 'CV' : 
+            idiosyncratic_model.fit_lasso_cv(alpha_values=LASSO_penalty)
+        elif LASSO_hyperparameter_tuning == 'BIC' : 
+            idiosyncratic_model.fit_lasso_bic(alpha_values=LASSO_penalty)
+        Xi_hat = idiosyncratic_model.predict_idiosyncratic_component(X_new=Xi[-1,None]) 
+        predictions[i] = factor_model.predict_common_component()[:,0] + Xi_hat[:]
+
 ###### OUTPUT TO FILES ###### 
 if save_predictions:
     np.savetxt(f"predictions-{PBS_ARRAY_INDEX}.csv", predictions, delimiter=',', fmt='%.3f') 
+
+if save_labels and idiosyncratic_model == "NIRVAR":
+    np.savetxt(f"labels_hat-{PBS_ARRAY_INDEX}.csv", labels_hat, delimiter=',', fmt='%d') 
 
 f = open("backtesting_hyp.txt", "w")
 f.write("{\n")
