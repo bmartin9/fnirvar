@@ -11,7 +11,7 @@ import yaml
 import numpy as np 
 from numpy.random import default_rng 
 from scipy import stats 
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import root_mean_squared_error
 from sklearn.metrics import r2_score
 from sklearn.metrics import mean_absolute_error
 from fnirvar.modeling.statistics import benchmarking
@@ -30,13 +30,9 @@ varying_factors = config['varying_factors']
 save_loadings = config['save_loadings'] 
 save_factors = config['save_factors'] 
 save_predictions = config['save_predictions']
-do_NIRVAR_estimation = config['do_NIRVAR_estimation']
 NIRVAR_embedding_method = config['NIRVAR_embedding_method'] 
 use_HPC = config['use_HPC'] 
 Q = config['Q']
-only_NIRVAR = config['only_NIRVAR']
-if only_NIRVAR:
-    do_NIRVAR_estimation = False
 target_feature = config['target_feature']
 transaction_cost = config['transaction_cost']
 quantile = config['quantile']
@@ -83,7 +79,7 @@ for t in range(1,n_backtest_days_tot):
     long_ratios[t-1] = daily_long
     daily_corr_SP = daily_bench.corr_SP()
     corr_SP[t-1] = daily_corr_SP
-    daily_rmse[t-1] = np.sqrt(mean_squared_error(predictions[t],targets[t]))
+    daily_rmse[t-1] = np.sqrt(root_mean_squared_error(predictions[t],targets[t]))
     daily_turnover[t-1] = (1/N)*np.sum(daily_bench.transaction_indicator())
     daily_r_squared = r2_score(y_true=targets[t],y_pred=predictions[t]) 
 

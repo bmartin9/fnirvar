@@ -12,6 +12,9 @@ from sklearn.mixture import GaussianMixture
 from sklearn.linear_model import LinearRegression
 from scipy import linalg 
 from sklearn.decomposition import TruncatedSVD
+from sklearn.linear_model import Lasso
+from sklearn.model_selection import GridSearchCV
+from sklearn.linear_model import MultiTaskLassoCV
 
 def eigenvalue_ratio_test(X, kmax=None):
     """
@@ -573,6 +576,102 @@ class NIRVAR():
         Xi_hat = phi_hat @ self.Xi[-1,:]
         return Xi_hat 
     
+class LASSO():
+    "Class to do LASSO estimation and prediction."
+    def __init__(self,
+                Xi : np.ndarray,
+                ) -> None :
+        """ 
+        :param Xi: Design matrix of shaoe (T, N) 
+        :type Xi: numpy.ndarray 
 
+        """
+        self.Xi = Xi 
+
+    @property
+    def T(self):
+        T = self.Xi.shape[0] 
+        return T
+
+    @property
+    def N(self):
+        N = self.Xi.shape[1] 
+        return N
+    
+    def fit_lasso(self, alpha: float):
+        """
+        Fit LASSO regression with a given alpha.
+        
+        :param alpha: Regularization parameter for LASSO
+        :type alpha: float
+        """
+        self.model = Lasso(alpha=alpha,fit_intercept=False) 
+        predictors = self.Xi[:self.T-1]
+        targets = self.Xi[1:] 
+        self.model.fit(predictors, targets)
+
+    def fit_lasso_cv(self, alpha_values: list):
+        """
+        Fit LASSO using cross validation to select the optimal alpha.
+        
+        :param alpha_values: List of alpha values to search over
+        :type alpha_values: list
+        """
+        self.model = MultiTaskLassoCV(alphas=alpha_values,fit_intercept=False) 
+        predictors = self.Xi[:self.T-1]
+        targets = self.Xi[1:] 
+        self.model.fit(predictors, targets)
+        print(f"Penalty chosen by Cross Validation : {self.model.alpha_}") 
+
+    def fit_lasso_bic(self, alpha_values: list):
+        """
+        Fit LASSO using BIC to select the optimal alpha.
+        
+        :param alpha_values: List of alpha values to search over
+        :type alpha_values: list
+        """
+        predictors = self.Xi[:self.T-1]
+        targets = self.Xi[1:] 
+
+        best_bic = np.inf
+        best_alpha = None
+        best_model = None
+
+        # Loop over alpha values and compute BIC
+        for alpha in alpha_values:
+            model = Lasso(alpha=alpha,fit_intercept=False)
+            model.fit(predictors, targets)
+            
+            # Calculate BIC for the model
+            rss = np.sum((targets - model.predict(predictors)) ** 2)
+            bic = (self.T -1)* np.log(rss / (self.T -1)) + np.log(self.T-1) * np.sum(model.coef_ != 0)
+
+            if bic < best_bic:
+                best_bic = bic
+                best_alpha = alpha
+                best_model = model
+
+        self.model = best_model
+        print(f"Penalty chosen by BIC : {best_alpha}") 
+        return best_alpha, best_bic
+
+    def predict_idiosyncratic_component(self, X_new: np.ndarray):
+        """
+        Predict using the fitted LASSO model.
+        
+        :param X_new: New data matrix of shape (T_new, N)
+        :type X_new: numpy.ndarray
+
+        :return: Predictions for the new data
+        :rtype: numpy.ndarray
+        """
+        if self.model is None:
+            raise ValueError("Model has not been fitted yet.")
+        # Ensure X_new is the correct shape (T_new, N)
+        if X_new.shape[1] != self.N:
+            raise ValueError(f"Expected X_new to have {self.N} features, but got {X_new.shape[1]}")
+        return self.model.predict(X_new)
+    
+    
 
         

@@ -11,6 +11,7 @@ import sys
 import yaml 
 from fnirvar.modeling.train import FactorAdjustment 
 from fnirvar.modeling.train import NIRVAR
+from fnirvar.modeling.train import LASSO
 import os
 from numpy.random import default_rng
 from sklearn.preprocessing import MinMaxScaler
@@ -35,6 +36,9 @@ Q = config['Q']
 factor_model = config['factor_model']
 idiosyncratic_model = config['idiosyncratic_model']
 minmax_scaling = config['minmax_scaling']
+LASSO_penalty = config['LASSO_penalty']
+LASSO_hyperparameter_tuning = config['LASSO_hyperparameter_tuning']
+
 
 ###### ENVIRONMENT VARIABLES ######  
 if use_HPC:
@@ -139,6 +143,39 @@ if minmax_scaling:
             predictions[i] = predictions_original_space[0,:] + X[-1]
 
             print ("\033[A                             \033[A") 
+    
+    elif factor_model == 'Static' and idiosyncratic_model == 'LASSO':
+        print("Static Factors + LASSO")  
+        predictions = np.zeros((n_backtest_days,N)) 
+        for i, day in enumerate(days_to_backtest):
+            print(f"Day {day}") 
+            X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
+            X_diff = X[1:] - X[:-1]
+            scaler = MinMaxScaler(feature_range=(-1,1)) 
+            scaler.fit(X_diff) 
+            X_train = scaler.transform(X_diff)
+            X_train_mean = np.mean(X_train,axis=0)
+            X_train -= X_train_mean
+            if varying_factors:
+                current_r = factor_csv[i]
+            else:
+                current_r = r
+            factor_model = FactorAdjustment(X_train, current_r, lF)
+            Xi = factor_model.get_idiosyncratic_component()
+            idiosyncratic_model = LASSO(Xi=Xi) 
+            if LASSO_hyperparameter_tuning == 'None' :
+                idiosyncratic_model.fit_lasso(alpha=LASSO_penalty[0])
+            elif LASSO_hyperparameter_tuning == 'CV' : 
+                idiosyncratic_model.fit_lasso_cv(alpha_values=LASSO_penalty)
+            elif LASSO_hyperparameter_tuning == 'BIC' : 
+                idiosyncratic_model.fit_lasso_bic(alpha_values=LASSO_penalty)
+            Xi_hat = idiosyncratic_model.predict_idiosyncratic_component(X_new=Xi[-1,None]) 
+            predictions_scaled = factor_model.predict_common_component()[:,0] + Xi_hat[:]
+            predictions_scaled += X_train_mean[:]
+            predictions_original_space = scaler.inverse_transform(predictions_scaled.reshape(1,-1))
+            predictions[i] = predictions_original_space[0,:] + X[-1] # predict the log number of rides, not the first differences of this
+
+            print ("\033[A                             \033[A") 
 
 else: 
     if factor_model == 'Static' and idiosyncratic_model == 'NIRVAR':
@@ -188,6 +225,32 @@ else:
                 current_r = r
             model = FactorAdjustment(X, current_r, lF)
             predictions[i] = model.predict_common_component()[:,0] + X[-1]
+
+            print ("\033[A                             \033[A") 
+
+    elif factor_model == 'Static' and idiosyncratic_model == 'LASSO':
+        print("Static Factors + LASSO")  
+        predictions = np.zeros((n_backtest_days,N)) 
+        for i, day in enumerate(days_to_backtest):
+            print(f"Day {day}") 
+            X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from 
+            X_diff = X[1:] - X[:-1]
+            if varying_factors:
+                current_r = factor_csv[i]
+            else:
+                current_r = r
+            factor_model = FactorAdjustment(X_diff, current_r, lF)
+            Xi = factor_model.get_idiosyncratic_component()
+            idiosyncratic_model = LASSO(Xi=Xi) 
+            if LASSO_hyperparameter_tuning == 'None' :
+                idiosyncratic_model.fit_lasso(alpha=LASSO_penalty[0])
+            elif LASSO_hyperparameter_tuning == 'CV' : 
+                idiosyncratic_model.fit_lasso_cv(alpha_values=LASSO_penalty)
+            elif LASSO_hyperparameter_tuning == 'BIC' : 
+                idiosyncratic_model.fit_lasso_bic(alpha_values=LASSO_penalty)
+            Xi_hat = idiosyncratic_model.predict_idiosyncratic_component(X_new=Xi[-1,None]) 
+            predictions_diff = factor_model.predict_common_component()[:,0] + Xi_hat[:]
+            predictions[i] = predictions_diff + X[-1] # predict the log number of rides, not the first differences of this
 
             print ("\033[A                             \033[A") 
 
