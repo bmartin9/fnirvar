@@ -108,7 +108,7 @@ elif factor_model == 'Static' and idiosyncratic_model == 'None':
 
 ###### OUTPUT TO FILES ###### 
 if save_predictions:
-    np.savetxt(f"predictions-{PBS_ARRAY_INDEX}.csv", predictions, delimiter=',') 
+    np.savetxt(f"predictions-{PBS_ARRAY_INDEX}.csv", predictions, delimiter=',', fmt='%.3f') 
 
 f = open("backtesting_hyp.txt", "w")
 f.write("{\n")
