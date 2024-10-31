@@ -359,7 +359,7 @@ class FactorAdjustment():
             factors = self.static_factors()
             loadings = self.X.T @ factors / self.T 
         else:
-            loadings = np.sqrt(self.N)*np.linalg.eigh(self.X.T @ self.X / self.T)[1][:, -self.r:] # Eigenvectors of the covariance matrix corresponding to the r largest eigenvalues 
+            loadings = np.sqrt(self.N)*np.linalg.eigh(self.X.T @ self.X )[1][:, -self.r:] # Eigenvectors of the covariance matrix corresponding to the r largest eigenvalues 
         return loadings
     
     def static_factors(self):  
