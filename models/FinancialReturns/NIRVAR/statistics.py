@@ -99,6 +99,8 @@ def deflated_SR(PnL_vector):
 
 deflated_sharpe_ratio = deflated_SR(PnL) 
 
+print(f"PnL Mean: {np.mean(PnL)}")
+print(f"PnL Std: {np.std(PnL)}")
 sharpe_ratio = (np.mean(PnL)/np.std(PnL))*np.sqrt(252)
 mean_spearman_corr = np.mean(corr_SP)
 print(f"sum PnL : {np.sum(PnL)}") 
