@@ -142,12 +142,12 @@ elif factor_model == 'Static' and idiosyncratic_model == 'LASSO':
 
 ###### OUTPUT TO FILES ###### 
 if save_predictions:
-    np.savetxt(f"predictions-{PBS_ARRAY_INDEX}.csv", predictions, delimiter=',', fmt='%.5f') 
+    np.savetxt(f"predictions-{PBS_ARRAY_INDEX}.csv", predictions, delimiter=',', fmt='%.6f') 
 
 if save_labels and idiosyncratic_model == "NIRVAR":
     np.savetxt(f"labels_hat-{PBS_ARRAY_INDEX}.csv", labels_hat, delimiter=',', fmt='%d') 
 
-f = open("backtesting_hyp.txt", "w")
+f = open("hyperparameters.txt", "w")
 f.write("{\n")
 for k in config.keys():
     f.write("'{}':'{}'\n".format(k, config[k]))
