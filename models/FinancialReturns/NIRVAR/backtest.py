@@ -142,7 +142,7 @@ elif factor_model == 'Static' and idiosyncratic_model == 'LASSO':
 
 ###### OUTPUT TO FILES ###### 
 if save_predictions:
-    np.savetxt(f"predictions-{PBS_ARRAY_INDEX}.csv", predictions, delimiter=',', fmt='%.3f') 
+    np.savetxt(f"predictions-{PBS_ARRAY_INDEX}.csv", predictions, delimiter=',', fmt='%.5f') 
 
 if save_labels and idiosyncratic_model == "NIRVAR":
     np.savetxt(f"labels_hat-{PBS_ARRAY_INDEX}.csv", labels_hat, delimiter=',', fmt='%d') 
