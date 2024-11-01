@@ -90,7 +90,9 @@ if factor_model == 'Static' and idiosyncratic_model == 'NIRVAR':
         predictions[i, :] = factor_model.predict_common_component()[:,0] + Xi_hat
 
         if save_labels:
-            labels_hat[i] = idiosyncratic_model.get_NIRVAR_gmm_labels()
+            current_labels = idiosyncratic_model.get_NIRVAR_gmm_labels()
+            print(f"label 0 : {current_labels[0]}")
+            labels_hat[i] = current_labels
 
 elif factor_model == 'None' and idiosyncratic_model == 'NIRVAR':
     predictions = np.zeros((n_backtest_days, N)) 
