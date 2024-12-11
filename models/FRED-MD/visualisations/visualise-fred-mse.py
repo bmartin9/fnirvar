@@ -81,7 +81,7 @@ fig_metric = go.Figure()
 fig_gt_pred = go.Figure() 
 
 
-names = ["NIRVAR","Factors Only","Factors+NIRVAR","8 Factors Only","8 Factors+NIRVAR"]
+names = ["NIRVAR","8 Factors Only","8 Factors+NIRVAR"]
 colors = [
     'rgb(55, 126, 184)',   # Plotly Blue
     'rgb(228, 26, 28)',    # Plotly Red

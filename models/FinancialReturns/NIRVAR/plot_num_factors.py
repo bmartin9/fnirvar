@@ -47,13 +47,14 @@ date_range = pd.date_range(start='2004-01-01', end='2020-12-31', periods=num_day
 cum_PnL_bpts = []
 for m in range(num_models):
     # cum_PnL_bpts.append([1000*np.cumsum(PnL_list[m])[t]/NUM_STOCKS*t for t in range(num_days)]) 
-    cum_PnL_bpts.append(10000*np.cumsum(PnL_list[m])/(num_days)) 
+    cum_PnL_bpts.append(PnL_list[m])
 
 
 # Create traces for N lines
 traces = []
 # names = ["NIRVAR C1", "NIRVAR C2","NIRVAR P1","NIRVAR P2","FNETS","GNAR","FARM"]
-names = ["NIRVAR","fNIRVAR_PCp2","fNIRVAR_5Factors"]
+# names = ["NIRVAR","fNIRVAR_PCp2","fNIRVAR_5Factors"]
+names = ["PCp2 Criterion"]
 # names = ["0 bpts","1 bpts","2 bpts","3 bpts","4 bpts",]
 # dash_styles = ['solid', 'dot', 'dash', 'longdash', 'dashdot', 'longdashdot']
 dash_styles = ['solid', 'dot', 'dash', 'longdash']
@@ -120,14 +121,14 @@ for i in range(num_models):
         marker=dict(symbol=marker_symbols[i], size=6),
         text=['']*len(date_range[::500])
     )
-    traces.append(trace_markers)
+    # traces.append(trace_markers)
 
 white_space_duration = datetime.timedelta(days=50)
 your_x_min = min(date_range) - white_space_duration
 your_x_max = max(date_range) + white_space_duration
 # Create a layout
 layout = go.Layout(
-    yaxis=dict(title='Cumulative PnL (bpts)', showline=True, linewidth=1, linecolor='black',ticks='outside',mirror=True),
+    yaxis=dict(title='Estimated Number of Factors', showline=True, linewidth=1, linecolor='black',ticks='outside',mirror=True),
     xaxis=dict(title='Day',showline=True, linewidth=1, linecolor='black',ticks='outside',mirror=True,automargin=True,range=[your_x_min, your_x_max]),
     paper_bgcolor='white',  # Set background color to white
     plot_bgcolor='white',   # Set plot area color to white
@@ -143,9 +144,9 @@ layout = go.Layout(
 fig = go.Figure(data=traces, layout=layout)
 
 # Save the figure as a PNG file
-pio.write_image(fig, 'CumPnL.pdf')
+pio.write_image(fig, 'plot_num_factors.pdf')
 time.sleep(2)
-pio.write_image(fig, 'CumPnL.pdf')
+pio.write_image(fig, 'plot_num_factors.pdf')
 # tikzplotly.save("CumPnL.tex",fig)
 
 

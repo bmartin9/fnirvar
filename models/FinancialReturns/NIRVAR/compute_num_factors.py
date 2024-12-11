@@ -9,7 +9,8 @@ Outputs csv of integers.
 import numpy as np
 import sys
 import yaml 
-from fnirvar.modeling.train import eigenvalue_ratio_test
+from fnirvar.modeling.train import ER 
+from fnirvar.modeling.train import GR 
 from fnirvar.modeling.train import baing
 import os
 from numpy.random import default_rng
@@ -46,13 +47,15 @@ days_to_backtest = [int(first_prediction_day + i) for i in range(n_backtest_days
 num_factors = np.zeros(n_backtest_days_tot, dtype=int)
 
 for i, day in enumerate(days_to_backtest):
-    print(i) 
     X = Xs[day-lookback_window:day+1, :] # day is the day on which you predict tomorrow's returns from
 
     # Compute number of factors
     if num_factors_method == 'ER':
-        r, _, _ = eigenvalue_ratio_test(X,kmax=max_num_factors)
+        r = ER(X,kmax=max_num_factors)
 
+    elif num_factors_method == 'GR':
+        r = GR(X,kmax=max_num_factors)
+    
     elif num_factors_method == 'PCp1':
         r, _, _, _ = baing(X=X,kmax=max_num_factors,jj=1) 
 
@@ -61,7 +64,6 @@ for i, day in enumerate(days_to_backtest):
     
     elif num_factors_method == 'PCp3':
         r, _, _, _ = baing(X=X,kmax=max_num_factors,jj=3) 
-
     # Store the result
     num_factors[i] = r 
 
