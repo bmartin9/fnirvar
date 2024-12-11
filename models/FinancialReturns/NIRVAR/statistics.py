@@ -4,7 +4,7 @@ NOTE: It is assumed that the backtest_design input file is clean: no NA values a
 """
 
 #!/usr/bin/env python3 
-# USAGE: ./backtest_statistics.py <BACKTEST_DESIGN>.csv predictions.csv config.yaml 
+# USAGE: ./statistics.py <BACKTEST_DESIGN>.csv predictions.csv config.yaml 
 
 import sys 
 import yaml 
@@ -70,7 +70,7 @@ for t in range(1,n_backtest_days_tot):
     print(t) 
     weightings = np.ones((N)) #equal weightings
     
-    daily_bench = benchmarking(predictions=predictions[t],market_excess_returns=targets[t],yesterdays_predictions=predictions[t-1],transaction_cost=0)  
+    daily_bench = benchmarking(predictions=predictions[t],market_excess_returns=targets[t],yesterdays_predictions=predictions[t-1],transaction_cost=0.0001*transaction_cost)  
     daily_PnL = daily_bench.weighted_PnL_transactions(weights=weightings, quantile=quantile) 
     PnL[t-1] = daily_PnL
     daily_hit_ratio = daily_bench.hit_ratio()

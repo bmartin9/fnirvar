@@ -4,7 +4,7 @@ n_backtest_days : 4275
 first_prediction_day : 1003 # first day to start making predictions (python index)
 lookback_window : 1003 
 varying_factors : FALSE # whether the estimated number of factors changes over the backtesting window
-num_factors : 5 
+num_factors : 20 
 save_loadings : FALSE # whether to save the loadings
 save_factors : FALSE # whether to save the factors 
 save_predictions : TRUE # whether to save the predictions
@@ -14,7 +14,7 @@ NIRVAR_embedding_method : 'Pearson Correlation' #One of 'Pearson Correlation' (D
 use_HPC : TRUE # whether to use the HPC
 Q : 4 # number of features of data
 target_feature : 1 # The feature you want to predict
-transaction_cost : 1 # cost of a single transaction in bpts
+transaction_cost : 0 # cost of a single transaction in bpts
 quantile : 1 # The top x% largest (in magnitude) predictions where x ∈ [0,1].
 num_factors_method : 'ER' # Method used to compute number of factors: one of 'ER','GR', 'PCp1', 'PC_p2'
 max_num_factors : 25 # Set the maximum number of possible factors

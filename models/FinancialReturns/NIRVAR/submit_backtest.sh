@@ -10,7 +10,7 @@ source activate fnirvar
 
 export DESIGN_FILE='../../../data/FinancialReturns/processed/stocks_no_market_cleaned.csv'
 export NUM_FACTORS='estimated_num_factors.csv'
-export OUTPUT_DIRECTORY='Factors+NIRVAR'
+export OUTPUT_DIRECTORY='20Factors+NIRVAR'
 cd $PBS_O_WORKDIR
 python backtest.py $DESIGN_FILE config.yaml $NUM_FACTORS 
 
