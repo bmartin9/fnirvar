@@ -1,0 +1,16 @@
+{
+'SEED':'4436'
+'n_backtest_days':'4275'
+'first_prediction_day':'1004'
+'lookback_window':'1004'
+'varying_factors':'False'
+'num_factors':'1'
+'save_loadings':'False'
+'save_factors':'False'
+'save_predictions':'True'
+'factor_lags':'1'
+'do_NIRVAR_estimation':'True'
+'NIRVAR_embedding_method':'Pearson Correlation'
+'use_HPC':'True'
+'Q':'4'
+}

@@ -1,0 +1,1 @@
+Compute Sharpe ratios for different alpha and beta in Value weighted portfolio

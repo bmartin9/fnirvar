@@ -15,6 +15,9 @@ from sklearn.metrics import root_mean_squared_error
 from sklearn.metrics import r2_score
 from sklearn.metrics import mean_absolute_error
 from fnirvar.modeling.statistics import benchmarking
+import plotly.express as px
+import plotly.graph_objects as go
+import time
 
 with open(sys.argv[3], "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader) 
@@ -36,6 +39,9 @@ Q = config['Q']
 target_feature = config['target_feature']
 transaction_cost = config['transaction_cost']
 quantile = config['quantile']
+weightings_choice = config['weightings']
+alpha = config['alpha']
+beta = config['beta'] 
 
 ###### READ IN DATA ######
 Xs = np.genfromtxt(sys.argv[1], delimiter=',') #read in full design matrix 
@@ -56,6 +62,94 @@ first_predict_from = first_prediction_day    # first day we do prediction on
 last_predict_from = first_predict_from + n_backtest_days_tot # last day we do prediction on
 targets = Xs[first_predict_from+1:last_predict_from+1,:,target_feature] 
 
+####### COMPUTE VOLUME WEIGHTINGS #######
+
+if weightings_choice == 'VolMM':
+    volMM_Xs = 1000000*Xs[: last_predict_from, : ,2] 
+    mddv = np.empty((n_backtest_days_tot, N))  # shape: (n_backtest_days_tot, N)
+    for t in range(first_predict_from, last_predict_from):
+        day_idx = t - first_predict_from
+        # Median over all rows up to (but not including) i, for each column
+        mddv[day_idx, :] = np.median(volMM_Xs[t-lookback_window:t, :], axis=0)
+    volMM_weights = np.minimum(alpha * mddv, beta) 
+    volMM_weights = volMM_weights/np.sum(volMM_weights, axis=1,keepdims=True) # normalise weights
+
+    # Compute daily means and standard deviations across assets for each backtest day
+    daily_means = np.mean(volMM_weights, axis=1)  # shape: (n_backtest_days_tot,)
+    daily_stds  = np.std(volMM_weights, axis=1)   # shape: (n_backtest_days_tot,)
+
+    mean_portfolio_weight = np.mean(daily_means)
+    mean_daily_std_portfolio_weight = np.mean(daily_stds) 
+
+    # Calculate upper and lower bounds for the shaded region
+    upper_bound = daily_means + daily_stds
+    lower_bound = daily_means - daily_stds
+
+    # Create an array representing days
+    days = np.arange(n_backtest_days_tot)
+
+    # Use or update your existing layout if needed
+    layout = go.Layout(
+        yaxis=dict(
+            title='Mean portfolio weight', 
+            showline=True, linewidth=1, linecolor='black', 
+            ticks='outside', mirror=True
+        ),
+        xaxis=dict(
+            title='Day',
+            showline=True, linewidth=1, linecolor='black',
+            ticks='outside', mirror=True,
+            automargin=True
+        ),
+        paper_bgcolor='white',  
+        plot_bgcolor='white',   
+        font_family="Serif", 
+        font_size=11, 
+        margin=dict(l=5, r=5, t=5, b=5),
+        width=500, 
+        height=350
+    )
+
+    # Create Plotly traces
+    # Trace for the upper bound (invisible line, used for fill reference)
+    trace_upper = go.Scatter(
+        x=days,
+        y=upper_bound,
+        mode='lines',
+        line=dict(width=0),  # invisible line
+        showlegend=False,
+        hoverinfo='skip'
+    )
+
+    # Trace for the lower bound that fills to the upper bound
+    trace_fill = go.Scatter(
+        x=days,
+        y=lower_bound,
+        mode='lines',
+        line=dict(width=0),  # invisible line
+        fill='tonexty',      # fill between this trace and the previous trace
+        fillcolor='rgba(0,100,80,0.2)',  # semi-transparent fill color
+        showlegend=False,
+        hoverinfo='skip'
+    )
+
+    # Trace for the continuous mean line
+    trace_mean = go.Scatter(
+        x=days,
+        y=daily_means,
+        mode='lines',
+        line=dict(color='rgb(0,100,80)', width=2),
+        name='Mean'
+    )
+
+    # Create the figure with the defined layout and traces
+    fig = go.Figure(data=[trace_upper, trace_fill, trace_mean], layout=layout)
+    fig.write_image("mean_portfolio_weight_plot.pdf")
+    time.sleep(1)
+    fig.write_image("mean_portfolio_weight_plot.pdf")
+
+    
+    
 ####### DAILY BACKTESTING STATISTICS ###### 
 PnL = np.zeros((n_backtest_days_tot-1))
 hit_ratios  = np.zeros((n_backtest_days_tot-1))
@@ -68,7 +162,10 @@ daily_r_squared = np.zeros((n_backtest_days_tot-1))
 for t in range(1,n_backtest_days_tot): 
     # you must sacrifice the first day of predictions so that you can compute transaction_indicator
     print(t) 
-    weightings = np.ones((N)) #equal weightings
+    if weightings_choice == 'equal':
+        weightings = np.ones((N)) #equal weightings
+    elif weightings_choice == 'VolMM':
+        weightings = volMM_weights[t] 
     
     daily_bench = benchmarking(predictions=predictions[t],market_excess_returns=targets[t],yesterdays_predictions=predictions[t-1],transaction_cost=0.0001*transaction_cost)  
     daily_PnL = daily_bench.weighted_PnL_transactions(weights=weightings, quantile=quantile) 
@@ -138,19 +235,39 @@ np.savetxt('hit.csv', hit_ratios, delimiter=',', fmt='%.6f')
 np.savetxt('long.csv', PnL, delimiter=',', fmt='%.6f')
 np.savetxt('spearman_corr.csv', corr_SP, delimiter=',', fmt='%.6f')
 
-summary_statistics = {'Deflated Sharpe Ratio': deflated_sharpe_ratio,
-                      'Sharpe Ratio': sharpe_ratio,
-                      'Mean Spearman Correlation' : mean_spearman_corr,
-                      'PnL Per Trade' : PPT,
-                      'Mean Daily PnL' : mean_daily_PnL,
-                      'Hit Ratio' : total_hit_ratio,
-                      'Long Ratio' : total_long_ratio,
-                      'Max Draw Down' : max_dd,
-                      'Sortino Ratio' : sortino_ratio,
-                      'Mean RMSE' : mean_rmse,
-                      'Mean R Squared' : mean_r_squared,
-                      'Mean Turnover' : mean_turnover,
-                      'MAE' : MAE} 
+if weightings_choice == 'VolMM':
+
+    summary_statistics = {'Deflated Sharpe Ratio': deflated_sharpe_ratio,
+                        'Sharpe Ratio': sharpe_ratio,
+                        'Mean Spearman Correlation' : mean_spearman_corr,
+                        'PnL Per Trade' : PPT,
+                        'Mean Daily PnL' : mean_daily_PnL,
+                        'Hit Ratio' : total_hit_ratio,
+                        'Long Ratio' : total_long_ratio,
+                        'Max Draw Down' : max_dd,
+                        'Sortino Ratio' : sortino_ratio,
+                        'Mean RMSE' : mean_rmse,
+                        'Mean R Squared' : mean_r_squared,
+                        'Mean Turnover' : mean_turnover,
+                        'MAE' : MAE,
+                        'Mean daily portfolio weight ' : mean_portfolio_weight,
+                        'Mean daily std portfolio weight ' : mean_daily_std_portfolio_weight} 
+
+else: 
+    summary_statistics = {'Deflated Sharpe Ratio': deflated_sharpe_ratio,
+                        'Sharpe Ratio': sharpe_ratio,
+                        'Mean Spearman Correlation' : mean_spearman_corr,
+                        'PnL Per Trade' : PPT,
+                        'Mean Daily PnL' : mean_daily_PnL,
+                        'Hit Ratio' : total_hit_ratio,
+                        'Long Ratio' : total_long_ratio,
+                        'Max Draw Down' : max_dd,
+                        'Sortino Ratio' : sortino_ratio,
+                        'Mean RMSE' : mean_rmse,
+                        'Mean R Squared' : mean_r_squared,
+                        'Mean Turnover' : mean_turnover,
+                        'MAE' : MAE
+    }
 
 f = open("summary_statistics.txt", "w")
 f.write("{\n")

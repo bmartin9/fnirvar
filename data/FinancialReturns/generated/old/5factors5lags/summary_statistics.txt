@@ -1,0 +1,15 @@
+{
+'Deflated Sharpe Ratio':'0.0'
+'Sharpe Ratio':'2.436988913253639'
+'Mean Spearman Correlation':'0.06708558392792471'
+'PnL Per Trade':'1.042851908339283e-06'
+'Mean Daily PnL':'0.0006757680366038553'
+'Hit Ratio':'0.5165525954804707'
+'Long Ratio':'0.5105263157894737'
+'Max Draw Down':'7.642871628608882'
+'Sortino Ratio':'4.272195803215039'
+'Mean RMSE':'0.01784041775207657'
+'Mean R Squared':'-0.0046734822978729'
+'Mean Turnover':'0.4723788896108584'
+'MAE':'0.011797241945321231'
+}

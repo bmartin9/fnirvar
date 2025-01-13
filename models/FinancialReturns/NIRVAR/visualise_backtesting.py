@@ -53,27 +53,27 @@ for m in range(num_models):
 # Create traces for N lines
 traces = []
 # names = ["NIRVAR C1", "NIRVAR C2","NIRVAR P1","NIRVAR P2","FNETS","GNAR","FARM"]
-names = ["NIRVAR","fNIRVAR_PCp2","fNIRVAR_5Factors"]
+names = ["VolMMWeighted_NIRVAR","VolMMWeighted_fNIRVAR_PCp2"] 
 # names = ["0 bpts","1 bpts","2 bpts","3 bpts","4 bpts",]
 # dash_styles = ['solid', 'dot', 'dash', 'longdash', 'dashdot', 'longdashdot']
 dash_styles = ['solid', 'dot', 'dash', 'longdash']
-# marker_symbols = ['circle', 'square', 'diamond', 'cross', 'x','star', 'triangle-up']
-marker_symbols = ['circle', 'square', 'diamond', 'cross']
-# colors = [
-#     'rgb(55, 126, 184)',   # Plotly Blue
-#     'rgb(228, 26, 28)',    # Plotly Red
-#     'rgb(77, 175, 74)',    # Plotly Green
-#     'rgb(152, 78, 163)',   # Plotly Purple
-#     'rgb(255, 127, 0)',    # Plotly Orange
-#     'rgb(0, 139, 139)' ,     # Dark Cyan
-#     '#e377c2',  # Plotly Pink
-# ]
+marker_symbols = ['circle', 'square', 'diamond', 'cross', 'x','star', 'triangle-up']
+# marker_symbols = ['circle', 'square', 'diamond', 'cross']
 colors = [
     'rgb(55, 126, 184)',   # Plotly Blue
     'rgb(228, 26, 28)',    # Plotly Red
     'rgb(77, 175, 74)',    # Plotly Green
     'rgb(152, 78, 163)',   # Plotly Purple
+    'rgb(255, 127, 0)',    # Plotly Orange
+    'rgb(0, 139, 139)' ,     # Dark Cyan
+    '#e377c2',  # Plotly Pink
 ]
+# colors = [
+#     'rgb(55, 126, 184)',   # Plotly Blue
+#     'rgb(228, 26, 28)',    # Plotly Red
+#     'rgb(77, 175, 74)',    # Plotly Green
+#     'rgb(152, 78, 163)',   # Plotly Purple
+# ]
 
 # custom_dashes = [
 #     '10px,2px',   # Dash pattern for NIRVAR C1

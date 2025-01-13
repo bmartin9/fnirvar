@@ -1,0 +1,27 @@
+###### PARAMETERS #######
+SEED : 4436
+n_backtest_days : 4275
+first_prediction_day : 1003 # first day to start making predictions (python index)
+lookback_window : 1003 
+varying_factors : FALSE # whether the estimated number of factors changes over the backtesting window
+num_factors : 20 
+save_loadings : FALSE # whether to save the loadings
+save_factors : FALSE # whether to save the factors 
+save_predictions : TRUE # whether to save the predictions
+save_labels : TRUE # whether to save the nirvar estimated GMM cluster labels
+factor_lags : 5
+NIRVAR_embedding_method : 'Pearson Correlation' #One of 'Pearson Correlation' (Default), 'Precision Matrix', 'Covariance Matrix'
+use_HPC : TRUE # whether to use the HPC
+Q : 4 # number of features of data
+target_feature : 1 # The feature you want to predict
+transaction_cost : 0 # cost of a single transaction in bpts
+quantile : 0.25 # The top x% largest (in magnitude) predictions where x ∈ [0,1].
+weightings : 'VolMM' # One of 'equal', 'VolMM'
+num_factors_method : 'ER' # Method used to compute number of factors: one of 'ER','GR', 'PCp1', 'PC_p2'
+max_num_factors : 25 # Set the maximum number of possible factors
+factor_model : 'Static' # One of 'None', Static', 
+idiosyncratic_model : 'NIRVAR' # One of 'None', 'NIRVAR','LASSO'
+LASSO_penalty : [0.01] # List of penalties to use in your hyperparameter grid search. 
+LASSO_hyperparameter_tuning : 'None' # One of 'None', 'CV' , 'BIC' 
+alpha : 0.001 # constant scaling used for dollar weighted portfolio
+beta : 500000 # cutoff used for dollar weighted portfolio

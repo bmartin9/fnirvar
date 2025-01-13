@@ -118,9 +118,11 @@ class benchmarking():
         prediction_ranks = rankdata(np.abs(self.predictions),method='min') 
         cutoff_rank = self.N*(1-quantile) 
         quantile_predictions = np.where(prediction_ranks>=cutoff_rank,self.predictions,0)
+        quantile_weights = np.where(prediction_ranks>=cutoff_rank, weights, 0)
+        quantile_transaction_indicator = np.where(prediction_ranks>=cutoff_rank,self.transaction_indicator(),0)
         signed_predictions = np.sign(quantile_predictions)
-        PnL = np.sum(weights*(signed_predictions*self.market_excess_returns - (self.transaction_cost)*self.transaction_indicator())) 
-        portfolio_size = np.sum(weights) 
+        PnL = np.sum(weights*(signed_predictions*self.market_excess_returns - (self.transaction_cost)*quantile_transaction_indicator)) 
+        portfolio_size = np.sum(quantile_weights) 
         PnL = PnL/portfolio_size
         return PnL
     
