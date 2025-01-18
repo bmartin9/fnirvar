@@ -34,7 +34,7 @@ NIRVAR_embedding_method = config['NIRVAR_embedding_method']
 use_HPC = config['use_HPC'] 
 Q = config['Q']
 factor_model = config['factor_model']
-idiosyncratic_model = config['idiosyncratic_model'] 
+idiosyncratic_model_name = config['idiosyncratic_model'] 
 LASSO_penalty = config['LASSO_penalty']
 LASSO_hyperparameter_tuning = config['LASSO_hyperparameter_tuning']
 
@@ -72,7 +72,7 @@ if varying_factors:
     factor_csv = np.genfromtxt(sys.argv[3], delimiter=',',dtype='int')
 
 ###### BACKTESTING ###### 
-if factor_model == 'Static' and idiosyncratic_model == 'NIRVAR':
+if factor_model == 'Static' and idiosyncratic_model_name == 'NIRVAR':
     predictions = np.zeros((n_backtest_days, N)) 
     labels_hat = np.zeros((n_backtest_days,N)) 
     for i, day in enumerate(days_to_backtest):
@@ -94,7 +94,7 @@ if factor_model == 'Static' and idiosyncratic_model == 'NIRVAR':
             print(f"label 0 : {current_labels[0]}")
             labels_hat[i] = current_labels
 
-elif factor_model == 'None' and idiosyncratic_model == 'NIRVAR':
+elif factor_model == 'None' and idiosyncratic_model_name == 'NIRVAR':
     predictions = np.zeros((n_backtest_days, N)) 
     labels_hat = np.zeros((n_backtest_days,N)) 
     for i, day in enumerate(days_to_backtest):
@@ -108,7 +108,7 @@ elif factor_model == 'None' and idiosyncratic_model == 'NIRVAR':
         if save_labels:
             labels_hat[i] = idiosyncratic_model.get_NIRVAR_gmm_labels()
         
-elif factor_model == 'Static' and idiosyncratic_model == 'None':
+elif factor_model == 'Static' and idiosyncratic_model_name == 'None':
     predictions = np.zeros((n_backtest_days, N)) 
     for i, day in enumerate(days_to_backtest):
         print(f"Day {day}") 
@@ -120,7 +120,7 @@ elif factor_model == 'Static' and idiosyncratic_model == 'None':
         model = FactorAdjustment(X, current_r, lF)
         predictions[i, :] = model.predict_common_component()[:,0] 
 
-elif factor_model == 'Static' and idiosyncratic_model == 'LASSO':
+elif factor_model == 'Static' and idiosyncratic_model_name == 'LASSO':
     print("Static Factors + LASSO")  
     predictions = np.zeros((n_backtest_days,N)) 
     for i, day in enumerate(days_to_backtest):
@@ -146,7 +146,7 @@ elif factor_model == 'Static' and idiosyncratic_model == 'LASSO':
 if save_predictions:
     np.savetxt(f"predictions-{PBS_ARRAY_INDEX}.csv", predictions, delimiter=',', fmt='%.6f') 
 
-if save_labels and idiosyncratic_model == "NIRVAR":
+if save_labels and idiosyncratic_model_name == "NIRVAR":
     np.savetxt(f"labels_hat-{PBS_ARRAY_INDEX}.csv", labels_hat, delimiter=',', fmt='%d') 
 
 f = open("hyperparameters.txt", "w")

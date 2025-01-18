@@ -18,6 +18,7 @@ from fnirvar.modeling.statistics import benchmarking
 import plotly.express as px
 import plotly.graph_objects as go
 import time
+from pypfopt.efficient_frontier import EfficientFrontier
 
 with open(sys.argv[3], "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader) 
@@ -42,6 +43,7 @@ quantile = config['quantile']
 weightings_choice = config['weightings']
 alpha = config['alpha']
 beta = config['beta'] 
+beta_Sigma = config['beta_Sigma']
 
 ###### READ IN DATA ######
 Xs = np.genfromtxt(sys.argv[1], delimiter=',') #read in full design matrix 
@@ -81,75 +83,12 @@ if weightings_choice == 'VolMM':
     mean_portfolio_weight = np.mean(daily_means)
     mean_daily_std_portfolio_weight = np.mean(daily_stds) 
 
-    # Calculate upper and lower bounds for the shaded region
-    upper_bound = daily_means + daily_stds
-    lower_bound = daily_means - daily_stds
+elif weightings_choice == 'Markowitz':
+    Sigma_hat = np.zeros((N,N))
+    for s in range(first_predict_from):
+        realised_returns_s = Xs[s,:,target_feature]
+        Sigma_hat += (beta_Sigma**(first_predict_from-s))*np.outer(realised_returns_s,realised_returns_s)
 
-    # Create an array representing days
-    days = np.arange(n_backtest_days_tot)
-
-    # Use or update your existing layout if needed
-    layout = go.Layout(
-        yaxis=dict(
-            title='Mean portfolio weight', 
-            showline=True, linewidth=1, linecolor='black', 
-            ticks='outside', mirror=True
-        ),
-        xaxis=dict(
-            title='Day',
-            showline=True, linewidth=1, linecolor='black',
-            ticks='outside', mirror=True,
-            automargin=True
-        ),
-        paper_bgcolor='white',  
-        plot_bgcolor='white',   
-        font_family="Serif", 
-        font_size=11, 
-        margin=dict(l=5, r=5, t=5, b=5),
-        width=500, 
-        height=350
-    )
-
-    # Create Plotly traces
-    # Trace for the upper bound (invisible line, used for fill reference)
-    trace_upper = go.Scatter(
-        x=days,
-        y=upper_bound,
-        mode='lines',
-        line=dict(width=0),  # invisible line
-        showlegend=False,
-        hoverinfo='skip'
-    )
-
-    # Trace for the lower bound that fills to the upper bound
-    trace_fill = go.Scatter(
-        x=days,
-        y=lower_bound,
-        mode='lines',
-        line=dict(width=0),  # invisible line
-        fill='tonexty',      # fill between this trace and the previous trace
-        fillcolor='rgba(0,100,80,0.2)',  # semi-transparent fill color
-        showlegend=False,
-        hoverinfo='skip'
-    )
-
-    # Trace for the continuous mean line
-    trace_mean = go.Scatter(
-        x=days,
-        y=daily_means,
-        mode='lines',
-        line=dict(color='rgb(0,100,80)', width=2),
-        name='Mean'
-    )
-
-    # Create the figure with the defined layout and traces
-    fig = go.Figure(data=[trace_upper, trace_fill, trace_mean], layout=layout)
-    fig.write_image("mean_portfolio_weight_plot.pdf")
-    time.sleep(1)
-    fig.write_image("mean_portfolio_weight_plot.pdf")
-
-    
-    
 ####### DAILY BACKTESTING STATISTICS ###### 
 PnL = np.zeros((n_backtest_days_tot-1))
 hit_ratios  = np.zeros((n_backtest_days_tot-1))
@@ -166,7 +105,15 @@ for t in range(1,n_backtest_days_tot):
         weightings = np.ones((N)) #equal weightings
     elif weightings_choice == 'VolMM':
         weightings = volMM_weights[t] 
-    
+    elif weightings_choice == 'Markowitz':
+        Sigma_hat = beta_Sigma*(np.outer(targets[t-1],targets[t-1]) + Sigma_hat)
+        Sigma_hat_normalised = ((1-beta_Sigma)/((beta_Sigma)*(1-beta_Sigma**(t+first_predict_from))))*Sigma_hat
+        ef = EfficientFrontier(predictions[t], Sigma_hat_normalised, weight_bounds=(-1,1)) # allow for shorting
+        w = ef.max_sharpe()
+        clean_weights = ef.clean_weights()
+        weightings = np.array(list(clean_weights.values()))
+        weightings = weightings/np.sum(weightings) 
+
     daily_bench = benchmarking(predictions=predictions[t],market_excess_returns=targets[t],yesterdays_predictions=predictions[t-1],transaction_cost=0.0001*transaction_cost)  
     daily_PnL = daily_bench.weighted_PnL_transactions(weights=weightings, quantile=quantile) 
     PnL[t-1] = daily_PnL
