@@ -19,8 +19,8 @@ quantile : 1 # The top x% largest (in magnitude) predictions where x ∈ [0,1].
 minmax_scaling : TRUE # Whether to normalise the individual time series to the range [-1,1]
 factor_model : 'Static' # One of 'None', Static', 
 idiosyncratic_model : 'NIRVAR' # One of 'None', 'NIRVAR'
-num_factors_method : 'ER_kth_biggest' # Method used to compute number of factors: one of 'ER', 'PCp1', 'PCp2', 'PCp3', 'GR', 'ER_kth_biggest', 'GR_kth_biggest'
+num_factors_method : 'ER_kth_biggest' # Method used to compute number of factors: one of 'ER', 'PCp1', 'PCp2', 'PCp3', 'GR', 'ER_kth_biggest'
 max_num_factors : 25 # Set the maximum number of possible factors
 LASSO_penalty : [0.01] # List of penalties to use in your hyperparameter grid search. 
 LASSO_hyperparameter_tuning : 'None' # One of 'None', 'CV' , 'BIC' 
-eigengap_index : 4 # eigengap index you want - not a python index
+eigengap_index : 2 # eigengap index you want - not a python index

@@ -102,6 +102,41 @@ def ER(X : np.ndarray, kmax : int) -> None :
 
     return k_star 
 
+def ER_kth_biggest(X : np.ndarray, kmax : int, k : int) -> None : 
+    """ 
+    :param X: Design matrix of shape (T,N)
+    :type X: np.ndarray 
+
+    :param kmax: maximum possible number of factors 
+    :type kmax: int 
+
+    :param k: Look for kth largest eigengap
+    :type k: int 
+
+    :return k_star: chosen number of factors 
+    :rtype int: 
+    """
+
+    T = X.shape[0] 
+    N = X.shape[1] 
+
+    if N > T:
+        S = X@X.T / N*T 
+    else:
+        S = X.T@X / N*T 
+
+    eigenvalues = linalg.eigvalsh(S)
+    eigenvalues = np.sort(eigenvalues)[::-1]  # Sort in descending order 
+
+    er_ratios = np.zeros(kmax)
+    for s in range(kmax):
+        er_ratios[s] = eigenvalues[s] / eigenvalues[s + 1]
+
+    kth_index = er_ratios.argsort()[-k:][::-1]
+
+
+    return kth_index[-1] +1 
+
 def GR(X : np.ndarray, kmax : int) -> None : 
     """ 
     :param X: Design matrix of shape (T,N)
@@ -138,6 +173,38 @@ def GR(X : np.ndarray, kmax : int) -> None :
     
 
     
+def GR_kth_biggest(X : np.ndarray, kmax : int, k:int) -> None : 
+    """ 
+    :param X: Design matrix of shape (T,N)
+    :type X: np.ndarray 
+
+    :param kmax: maximum possible number of factors 
+    :type kmax: int 
+
+    :return k_star: chosen number of factors 
+    :rtype int: 
+    """
+
+    T = X.shape[0] 
+    N = X.shape[1] 
+
+    if N > T:
+        S = X@X.T / N*T 
+    else:
+        S = X.T@X / N*T 
+
+    eigenvalues = linalg.eigvalsh(S)
+    eigenvalues = np.sort(eigenvalues)[::-1]  # Sort in descending order 
+    V = np.cumsum(eigenvalues[::-1])[::-1]
+
+    er_ratios = np.zeros(kmax)
+    for s in range(kmax):
+        V_k = V[s+1] 
+        V_k_plus1 = V[s+2]
+        er_ratios[s] = np.log(1 + (eigenvalues[s]/V_k)) / np.log(1 + (eigenvalues[s + 1]/V_k_plus1))
+
+    kth_index = er_ratios.argsort()[::-1][k-1]
+    return kth_index +1 
 
 
 

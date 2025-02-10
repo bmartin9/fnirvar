@@ -4,15 +4,13 @@ Outputs csv of integers.
 """
 
 #!/usr/bin/env python3 
-# USAGE: ./compute_num_factors.py <DESIGN_MATRIX>.csv backtesting_config.yaml 
+# USAGE: ./compute_num_factors.py <DESIGN_MATRIX>.csv config.yaml 
 
 import numpy as np
 import sys
 import yaml 
-from fnirvar.modeling.train import ER
-from fnirvar.modeling.train import ER_kth_biggest
-from fnirvar.modeling.train import GR_kth_biggest
-from fnirvar.modeling.train import GR
+from fnirvar.modeling.train import ER 
+from fnirvar.modeling.train import GR 
 from fnirvar.modeling.train import baing
 import os
 from numpy.random import default_rng
@@ -28,26 +26,12 @@ lookback_window = config['lookback_window']
 Q = config['Q']
 num_factors_method = config['num_factors_method']
 max_num_factors = config['max_num_factors']
-minmax_scaling = config['minmax_scaling']
-eigengap_index = int(config["eigengap_index"])
 
 ###### READ IN DATA ######
-Xs = np.genfromtxt(sys.argv[1], delimiter=',', skip_header=1, usecols=range(1,123))
+Xs = np.genfromtxt(sys.argv[1], delimiter=',')
 T = Xs.shape[0]
-N_times_Q = Xs.shape[1]
-N = N_times_Q/Q
-if N != int(N):
-    print("ERROR:Input is not a whole number")
-N = int(N) 
-
-###### MINMAX SCALING ######
-if minmax_scaling: 
-    from sklearn.preprocessing import MinMaxScaler
-    scaler = MinMaxScaler(feature_range=(-1,1)) 
-    scaler.fit(Xs) 
-    Xs_scaled = scaler.transform(Xs)
-    Xs_mean = np.mean(Xs_scaled,axis=0)
-    Xs = Xs_scaled - Xs_mean 
+N = Xs.shape[1] 
+print(f"T : {T}")
 
 ###### COMPUTE NUMBER OF FACTORS FOR EACH BACKTESTING DAY ######
 # Get a list of days to do backtesting on
@@ -63,14 +47,8 @@ for i, day in enumerate(days_to_backtest):
     if num_factors_method == 'ER':
         r = ER(X,kmax=max_num_factors)
 
-    elif num_factors_method == 'ER_kth_biggest':
-        r = ER_kth_biggest(X,kmax=max_num_factors,k=eigengap_index) 
-
     elif num_factors_method == 'GR':
         r = GR(X,kmax=max_num_factors)
-
-    elif num_factors_method == 'GR_kth_biggest':
-        r = GR_kth_biggest(X,kmax=max_num_factors,k=eigengap_index) 
     
     elif num_factors_method == 'PCp1':
         r, _, _, _ = baing(X=X,kmax=max_num_factors,jj=1) 
@@ -81,6 +59,8 @@ for i, day in enumerate(days_to_backtest):
     elif num_factors_method == 'PCp3':
         r, _, _, _ = baing(X=X,kmax=max_num_factors,jj=3) 
 
+    print(f"i : {i} r : {r}")
+    
     # Store the result
     num_factors[i] = r 
 

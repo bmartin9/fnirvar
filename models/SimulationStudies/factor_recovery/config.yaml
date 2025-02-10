@@ -1,0 +1,10 @@
+###### PARAMETERS #######
+SEED : 4436
+n_backtest_days : 1000
+first_prediction_day : 1000 # first day to start making predictions (python index)
+lookback_window : 1000
+factor_lags : 5
+use_HPC : TRUE # whether to use the HPC
+num_factors_method : 'ER' # Method used to compute number of factors: one of 'ER','GR', 'PCp1', 'PCp2'
+max_num_factors : 50 # Set the maximum number of possible factors
+Q : 1

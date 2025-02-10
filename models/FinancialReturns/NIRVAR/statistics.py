@@ -19,6 +19,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import time
 from pypfopt.efficient_frontier import EfficientFrontier
+from pypfopt import objective_functions
 
 with open(sys.argv[3], "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader) 
@@ -44,6 +45,7 @@ weightings_choice = config['weightings']
 alpha = config['alpha']
 beta = config['beta'] 
 beta_Sigma = config['beta_Sigma']
+Markowitz_penalty = config['Markowitz_penalty']
 
 ###### READ IN DATA ######
 Xs = np.genfromtxt(sys.argv[1], delimiter=',') #read in full design matrix 
@@ -109,6 +111,7 @@ for t in range(1,n_backtest_days_tot):
         Sigma_hat = beta_Sigma*(np.outer(targets[t-1],targets[t-1]) + Sigma_hat)
         Sigma_hat_normalised = ((1-beta_Sigma)/((beta_Sigma)*(1-beta_Sigma**(t+first_predict_from))))*Sigma_hat
         ef = EfficientFrontier(predictions[t], Sigma_hat_normalised, weight_bounds=(-1,1)) # allow for shorting
+        # ef.add_objective(objective_functions.L2_reg, gamma=Markowitz_penalty)
         w = ef.max_sharpe()
         clean_weights = ef.clean_weights()
         weightings = np.array(list(clean_weights.values()))

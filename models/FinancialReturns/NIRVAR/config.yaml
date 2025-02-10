@@ -25,4 +25,5 @@ LASSO_penalty : [0.01] # List of penalties to use in your hyperparameter grid se
 LASSO_hyperparameter_tuning : 'None' # One of 'None', 'CV' , 'BIC' 
 alpha : 0.001 # constant scaling used for dollar weighted portfolio
 beta : 500000 # cutoff used for dollar weighted portfolio
-beta_Sigma : 0.8 # exponential weight used to estimate returns variance in Markowitz portfolio construction
+beta_Sigma : 0.98 # exponential weight used to estimate returns variance in Markowitz portfolio construction 
+Markowitz_penalty : 0.1 # L2 penalisation in Markowitz portfolio construction

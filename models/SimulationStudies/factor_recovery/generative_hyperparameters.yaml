@@ -1,0 +1,13 @@
+###### PARAMETERS #######
+SEED : 4436
+num_factors : 25
+l_F : 5 
+T : 10000 
+N1 : 600 
+B : 5
+p_in : 1
+p_out : 0
+use_HPC : FALSE 
+num_common_shocks : 8 
+rho_F : 0.8
+model : 'NIRVAR' # One of 'FactorsOnly', 'NIRVAR', 'FNIRVAR'
