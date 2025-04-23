@@ -1,20 +1,22 @@
 ###### PARAMETERS #######
 SEED : 4436
-num_factors : 8
-num_estimated_factors : 8
-l_F : 5 
-B : 5
+num_factors : 5
+num_estimated_factors : 5
+l_F : 5
+B : 4
 p_in : 0.9
 p_out : 0.1
 use_HPC : FALSE 
-num_common_shocks : 8 
-rho_F : 0.8
-model : 'NIRVAR' # One of 'FactorsOnly', 'NIRVAR', 'FNIRVAR'
-lookback_window : 100
-first_prediction_day : 100 # first day to start making predictions (python index)
-T_list : [500,600]
-N_list : [100,120]
-num_replicas : 2
+num_common_shocks : 5
+rho_F : 0.9
+generative_model : 'FNIRVAR' # One of 'FactorsOnly', 'NIRVAR', 'FNIRVAR'
+estimation_model : 'FNIRVAR_vs_FactorsOnly' # One of 'FactorsOnly', 'NIRVAR', 'FNIRVAR'
+lookback_window : 1000
+first_prediction_day : 1000 # first day to start making predictions (python index)
+T_list : [1050]
+N_list : [100]
+num_replicas : 10
 NIRVAR_embedding_method : 'Pearson Correlation' #One of 'Pearson Correlation' (Default), 'Precision Matrix', 'Covariance Matrix' 
+VAR_spectral_radius : 0.9
 
 

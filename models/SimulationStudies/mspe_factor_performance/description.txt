@@ -1,0 +1,1 @@
+simulation study to compare the mspe of FNIRVAR vs NIRVAR vs FactorsOnly when the data generating process is FNIRVAR/NIRVAR/FactorsOnly

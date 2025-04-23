@@ -1,0 +1,1 @@
+simulation study to plot the eigenvalues of the NIRVAR covariance matrix as N increases. This should tell us whether NIRVAR can be written as a factor model and/or a "block weak" factor model.

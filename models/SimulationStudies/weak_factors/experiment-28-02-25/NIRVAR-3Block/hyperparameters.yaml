@@ -1,0 +1,19 @@
+###### PARAMETERS #######
+SEED : 4436
+num_factors : 5
+num_estimated_factors : 5
+l_F : 5
+B : 3
+p_in : 0.9
+p_out : 0.1
+use_HPC : FALSE 
+num_common_shocks : 5
+rho_F : 0.6
+generative_model : 'NIRVAR' # One of 'FactorsOnly', 'NIRVAR', 'FNIRVAR'
+estimation_model : 'NIRVAR' # One of 'FactorsOnly', 'NIRVAR', 'FNIRVAR'
+T_list : [1050]
+N_list : [50,75,100,125,150,175,200,225,250,275,300,325,350,375,400]
+num_replicas : 10
+NIRVAR_embedding_method : 'Pearson Correlation' #One of 'Pearson Correlation' (Default), 'Precision Matrix', 'Covariance Matrix' 
+VAR_spectral_radius : 0.9
+eigenvalues_list : [0,1,2,3,4,5,6,7,8,9,10,11,12] # List of eigenvalues to plot (python index) - in decending order

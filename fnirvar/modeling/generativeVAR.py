@@ -120,8 +120,23 @@ class GenerateFNIRVAR:
         :rtype: np.ndarray
         """
         # 1) Create random P of shape (l_F, r, r) with small entries
-        scale = 0.1
-        P_raw = self.random_state.normal(size=(self.l_F, self.r, self.r),scale=scale) 
+        diagonal_value = 0.2
+        offdiag_scale = 0.1
+        # P_raw = self.random_state.normal(size=(self.l_F, self.r, self.r),scale=scale) 
+        # P_raw = scale*np.ones((self.l_F, self.r, self.r))
+        P_raw = np.zeros((self.l_F, self.r, self.r))
+        # 2) Fill in the diagonals with 'diagonal_value'
+        #    and off-diagonals with normal(0, offdiag_scale)
+        for k in range(self.l_F):
+            for i in range(self.r):
+                for j in range(self.r):
+                    if i == j:
+                        P_raw[k, i, j] = diagonal_value
+                    else:
+                        P_raw[k, i, j] = self.random_state.normal(
+                            loc=0.0, scale=offdiag_scale
+                        )
+        
 
         # 2) Build the block companion matrix
         comp_mat = self._build_companion(P_raw)
@@ -138,6 +153,15 @@ class GenerateFNIRVAR:
         # 4) Scale
         scale_factor = self.rho_F / current_rad
         P_scaled = P_raw * scale_factor
+
+        # print(f"P : {P_scaled}")
+
+        comp_mat = self._build_companion(P_scaled)
+        eigvals = np.linalg.eigvals(comp_mat)
+        # print(f"max eval P_scaled: {max(abs(eigvals))}")
+
+        if max(abs(eigvals)) >= 1:
+            print("ERROR: Factor VAR is non stationary")
 
         return P_scaled
 
@@ -311,6 +335,9 @@ class GenerateNIRVAR():
     :param t_distribution: Whether you want t distributed innovations instead of normally distributed distributions
     :type t_distribution: bool
 
+    :param symmetrize_phi: Whether to symmetrize the VAR coefficient matrix Phi
+    :type symmetrize_phi: bool
+
     :return: None
     :rtype: None
     """
@@ -335,7 +362,8 @@ class GenerateNIRVAR():
                  global_noise : float = 1,
                  different_innovation_distributions : bool = False,
                  phi_distribution : np.ndarray = None,
-                 t_distribution : bool = False
+                 t_distribution : bool = False,
+                 symmetrize_phi : bool = False
                  ) -> None:
  
         self.random_state = random_state
@@ -349,6 +377,7 @@ class GenerateNIRVAR():
         self.different_innovation_distributions = different_innovation_distributions  
         self.global_noise = global_noise 
         self.t_distribution = t_distribution
+        self.symmetrize_phi = symmetrize_phi
 
         if N is None and stock_names is None:
             raise ValueError("You must specify either 'N' or 'stock_names'")
@@ -459,6 +488,16 @@ class GenerateNIRVAR():
                     continue 
         return SBM_groupings_matrix 
     
+    def population_adjacency(self) -> np.ndarray:
+        """ 
+        The expected value of the adjacency matrix.
+        :return: P. Shape = (N,N). P = \mathbb{E}(A)
+        :rtype: np.ndarray
+        """
+        blocks = self.blocks() 
+        P = np.where(blocks==1,self.p_in,self.p_out)
+        return P 
+    
     def adjacency(self) -> np.ndarray:
         """ 
 
@@ -469,13 +508,28 @@ class GenerateNIRVAR():
             Connections between different features are 1 with probability p_between.
         :rtype: np.ndarray
         """
-        blocks = self.blocks() 
-        block_probabilities = np.where(blocks==1,self.p_in,self.p_out)
-        P = self.p_between*np.ones((self.N,self.Q,self.N,self.Q)) 
-        for q in range(self.Q):
-            P[:,q,:,q] = block_probabilities 
-        adjacency_matrix = self.random_state.binomial(1,P) 
-        return adjacency_matrix
+        if self.symmetrize_phi:
+            blocks = self.blocks() 
+            block_probabilities = np.where(blocks==1,self.p_in,self.p_out)
+            block_probabilities = np.triu(block_probabilities)
+            P = self.p_between*np.ones((self.N,self.Q,self.N,self.Q)) 
+            for q in range(self.Q):
+                P[:,q,:,q] = block_probabilities 
+            adjacency_matrix = self.random_state.binomial(1,P) 
+            A = np.zeros((self.N,self.Q,self.N,self.Q)) 
+            for q in range(self.Q):
+                A[:,q,:,q] = adjacency_matrix[:,q,:,q] + adjacency_matrix[:,q,:,q].T
+                np.fill_diagonal(A[:,q,:,q],1)
+            return A
+        else:
+            blocks = self.blocks() 
+            block_probabilities = np.where(blocks==1,self.p_in,self.p_out)
+            np.fill_diagonal(block_probabilities,1)
+            P = self.p_between*np.ones((self.N,self.Q,self.N,self.Q)) 
+            for q in range(self.Q):
+                P[:,q,:,q] = block_probabilities 
+            adjacency_matrix = self.random_state.binomial(1,P) 
+            return adjacency_matrix
     
     def manual_categories(self):
         """ 
@@ -487,6 +541,17 @@ class GenerateNIRVAR():
         keys = [str(x) for x in range(self.N)]
         cat = dict(zip(keys,vals))
         return cat
+    
+    @staticmethod
+    def create_alternating_list(B):
+        result = []
+        i = 1
+        while len(result) < B:
+            result.append(i)
+            if len(result) < B:  # Only append -i if we haven't reached B yet.
+                result.append(-i)
+            i += 1
+        return result
  
     def phi_blocks_distribution(self):
         """ 
@@ -496,14 +561,15 @@ class GenerateNIRVAR():
         :rtype: np.ndarray
         """
         phi_dense = np.zeros((self.N,self.Q,self.N,self.Q))
-        random_negative_mean = self.random_state.binomial(1,0.5,size=(self.B))
-        random_negative_mean = np.where(random_negative_mean==1,-1,1)
+        alternating_list = self.create_alternating_list(self.B)
         for i in range(self.N):
-            mean = random_negative_mean[list(self.categories.values())[i]]*list(self.categories.values())[i]
-            mean = 3*mean +10 
+            mean = alternating_list[list(self.categories.values())[i]]
             phi_dense[i] = self.random_state.normal(loc=mean,scale=1,size=(self.Q,self.N,self.Q))
         phi_dense = np.reshape(phi_dense,(self.N*self.Q,self.N*self.Q),order='F')
-        return phi_dense
+        if self.symmetrize_phi:
+            return (phi_dense + phi_dense.T)/2
+        else:
+            return phi_dense
 
     def phi(self) -> np.ndarray:
         """
@@ -514,13 +580,15 @@ class GenerateNIRVAR():
         """
         connections = self.adjacency_matrix 
         connections = np.reshape(connections,(self.N*self.Q,self.N*self.Q),order='F')  
-        phi = connections*self.phi_distribution 
+        phi = connections*self.phi_distribution
+        if self.symmetrize_phi:
+            phi = (phi + phi.T)/2 
         phi_eigs = np.linalg.eig(phi)[0]
         phi = (1/abs(np.max(phi_eigs)))*phi
-        phi = self.multiplier*phi 
-        phi_eigs = np.linalg.eig(phi)[0]
+        phi = self.multiplier*phi
         phi = np.reshape(phi,(self.N,self.Q,self.N,self.Q),order='F')
         return phi 
+
     
     def innovations_var(self) -> np.ndarray: 
         """ 

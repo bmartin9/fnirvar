@@ -25,6 +25,8 @@ with open(sys.argv[2], 'rb') as file:
 santander_locations_df = pd.read_csv(sys.argv[3])
 labels_hat = np.genfromtxt(sys.argv[4], delimiter=',', skip_header=0)[29].astype(int)
 
+print(common_start_ids.shape)
+
 # Extract station names corresponding to common_start_ids
 station_names = [santander_dict[int(id_)] for id_ in common_start_ids]
 

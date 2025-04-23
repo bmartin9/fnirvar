@@ -9,7 +9,10 @@ Outputs csv of integers.
 import numpy as np
 import sys
 import yaml 
-from fnirvar.modeling.train import eigenvalue_ratio_test
+from fnirvar.modeling.train import ER
+from fnirvar.modeling.train import GR
+from fnirvar.modeling.train import ER_kth_biggest
+from fnirvar.modeling.train import GR_kth_biggest
 from fnirvar.modeling.train import baing
 import os
 from numpy.random import default_rng
@@ -25,6 +28,7 @@ lookback_window = config['lookback_window']
 Q = config['Q']
 num_factors_method = config['num_factors_method']
 max_num_factors = config['max_num_factors']
+kth_eigengap = config['kth_eigengap']
 
 ###### READ IN DATA ######
 Xs = np.genfromtxt(sys.argv[1], delimiter=',')
@@ -44,7 +48,16 @@ for i, day in enumerate(days_to_backtest):
 
     # Compute number of factors
     if num_factors_method == 'ER':
-        r, _, _ = eigenvalue_ratio_test(X,kmax=max_num_factors)
+        r = ER(X,kmax=max_num_factors)
+
+    elif num_factors_method == 'ER_kth_biggest':
+        r = ER_kth_biggest(X,kmax=max_num_factors,k=kth_eigengap)
+
+    elif num_factors_method == 'GR':
+        r = GR(X,kmax=max_num_factors)
+
+    elif num_factors_method == 'GR_kth_biggest':
+        r = GR_kth_biggest(X,kmax=max_num_factors,k=kth_eigengap)
 
     elif num_factors_method == 'PCp1':
         r, _, _, _ = baing(X=X,kmax=max_num_factors,jj=1) 

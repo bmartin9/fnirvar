@@ -1,0 +1,6 @@
+{
+'MSPE':'[np.float64(0.22265095718331476)]'
+'MSPE Normalised':'[np.float64(0.5522432809621585)]'
+'MSPE_SD':'[np.float64(0.4711661412128513)]'
+'Proportion of Stations where NIRVAR is superior':'[np.float64(0.0)]'
+}

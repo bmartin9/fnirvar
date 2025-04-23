@@ -15,6 +15,7 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.linear_model import Lasso
 from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import MultiTaskLassoCV
+from typing import Tuple
 
 def eigenvalue_ratio_test(X, kmax=None):
     """
@@ -516,7 +517,8 @@ class NIRVAR():
                 d : int = None, 
                 K : int = None,
                 embedding_method : str = "Pearson Correlation",
-                gmm_random_int : int = 432
+                gmm_random_int : int = 432,
+                clustering_method : str = "GMM"
                 ) -> None:
         """ 
         :param random_state: Random State object. The seed value is set by the user upon instantiation of the Random State object.
@@ -533,10 +535,14 @@ class NIRVAR():
 
         :param embedding_method: one of 'Pearson Correlation' (Default), 'Precision Matrix', 'Covariance Matrix' 
         :type embedding_method: str
+
+        :param clustering_method: one of 'GMM' (Default) , 'GMM-BIC'
+        :type clustering_method: str
         """
         self.Xi = Xi 
         self.embedding_method = embedding_method
         self.gmm_random_int = gmm_random_int 
+        self.clustering_method = clustering_method
         self.d = d if d is not None else self.marchenko_pastur_estimate()  
         self.K = K if K is not None else self.d 
 
@@ -664,6 +670,40 @@ class NIRVAR():
         similarity_matrix = self.groupings_to_2D(labels)
 
         return similarity_matrix, labels
+    
+    def gmm_bic(self) -> np.ndarray:
+        """
+        GMM clustering. Number of clusters is chosen using BIC. EM algorithm is then run.
+
+        :return: similarity_matrix. A binary array with value 1 for the neighboring stocks in the same cluster and 0 otherwise. Shape = (N, N)
+        :rtype: np.ndarray
+
+        :return: labels. Array of integers where each integer labels a GMM cluster. Shape = (Q, N)
+        :rtype: np.ndarray
+        """
+        def gmm_bic_score(estimator, X):
+            return -estimator.bic(X)
+        
+        param_grid = {
+            "n_components": range(1,40),
+            "covariance_type": [ "full"],
+        }
+        embedding = self.embed()
+        grid_search = GridSearchCV(
+            GaussianMixture(), 
+            param_grid=param_grid, 
+            scoring=gmm_bic_score
+        )
+        grid_search.fit(embedding)
+        k = grid_search.best_params_["n_components"]
+        print(f"Best number of clusters: {k}")
+        gmm_labels = GaussianMixture(n_components=k, random_state=self.gmm_random_int, init_params='k-means++').fit_predict(embedding)
+        labels = gmm_labels
+        similarity_matrix = self.groupings_to_2D(labels)
+
+        return similarity_matrix, labels
+    
+    
 
     def covariates(self,constrained_array : np.ndarray) -> np.ndarray: 
         """ 
@@ -708,7 +748,10 @@ class NIRVAR():
         :return Xi_hat: predicted next day idiosyncratic component. Shape = (N,1) 
         :return type: np.ndarray  
         """
-        similarity_matrix, labels = self.gmm() 
+        if self.clustering_method == 'GMM':
+            similarity_matrix, labels = self.gmm()
+        elif self.clustering_method == 'GMM-BIC':
+            similarity_matrix, labels = self.gmm_bic()
         phi_hat = self.ols_parameters(constrained_array=similarity_matrix)
         Xi_hat = phi_hat @ self.Xi[-1,:]
         return Xi_hat 
@@ -720,7 +763,10 @@ class NIRVAR():
         :return: labels. Array of integers where each integer labels a GMM cluster. Shape = (Q, N)
         :rtype: np.ndarray
         """
-        similarity_matrix, labels = self.gmm() 
+        if self.clustering_method == 'GMM':
+            similarity_matrix, labels = self.gmm()
+        elif self.clustering_method == 'GMM-BIC':
+            similarity_matrix, labels = self.gmm_bic()
         return labels 
     
 class LASSO():
