@@ -12,8 +12,6 @@ save_labels : TRUE # whether to save the nirvar estimated GMM cluster labels
 factor_lags : 5
 NIRVAR_embedding_method : 'Pearson Correlation' #One of 'Pearson Correlation' (Default), 'Precision Matrix', 'Covariance Matrix' 
 use_HPC : FALSE # whether to use the HPC
-Q : 1 # number of features of data
-target_feature : 0
 transaction_cost : 0 # cost of a single transaction in bpts
 quantile : 1 # The top x% largest (in magnitude) predictions where x ∈ [0,1].
 minmax_scaling : FALSE # Whether to normalise the individual time series to the range [-1,1]

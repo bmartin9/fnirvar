@@ -166,7 +166,7 @@ def main() -> None:
         coords_df.longitude,
         coords_df.latitude,
         c=colours,
-        s=sizes,
+        s=30,
         alpha=0.9,
         edgecolor='black',
         linewidth=0.4,
