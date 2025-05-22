@@ -16,7 +16,7 @@ transaction_cost : 0 # cost of a single transaction in bpts
 quantile : 1 # The top x% largest (in magnitude) predictions where x ∈ [0,1].
 minmax_scaling : FALSE # Whether to normalise the individual time series to the range [-1,1]
 factor_model : 'Static' # One of 'None', Static', 
-idiosyncratic_model : 'NIRVAR' # One of 'None', 'NIRVAR', 'LASSO'
+idiosyncratic_model : 'None' # One of 'None', 'NIRVAR', 'LASSO'
 num_factors_method : 'PCp2' # Method used to compute number of factors: one of 'ER', 'GR', 'PCp1', 'PCp2', 'ER_kth_biggest' 'GR_kth_biggest'
 max_num_factors : 25 # Set the maximum number of possible factors 
 LASSO_penalty : [0.01] # List of penalties to use in your hyperparameter grid search. 
