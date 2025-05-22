@@ -53,7 +53,7 @@ for m in range(num_models):
 # Create traces for N lines
 traces = []
 # names = ["NIRVAR C1", "NIRVAR C2","NIRVAR P1","NIRVAR P2","FNETS","GNAR","FARM"]
-names = ["FNIRVAR_30Minute"]  
+names = ["NIRVAR_30Minute","FNIRVAR_30Minute"]  
 # names = ["0 bpts","1 bpts","2 bpts","3 bpts","4 bpts",]
 # dash_styles = ['solid', 'dot', 'dash', 'longdash', 'dashdot', 'longdashdot']
 dash_styles = ['solid', 'dot', 'dash', 'longdash']
