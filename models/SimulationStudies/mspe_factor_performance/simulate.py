@@ -40,6 +40,7 @@ estimation_model = config['estimation_model']
 num_replicas = int(config['num_replicas'])
 NIRVAR_embedding_method = config['NIRVAR_embedding_method'] 
 first_prediction_day = config['first_prediction_day']
+symmetric_phi = config['symmetric_phi']
 lookback_window = config['lookback_window']
 VAR_spectral_radius = config['VAR_spectral_radius']
 if generative_model == 'FactorsOnly':
@@ -64,118 +65,46 @@ else:
     PBS_ARRAY_INDEX = 1
     NUM_ARRAY_INDICES = 1
 
-###### HELPER FUNCTIONS ######
-def create_block_loadings(N, r, group_assignments, scale=1.0, normalize=True):
+###### LOADINGS MATRIX GENERATION ######
+def loadings(N, r, sigma, rand_state):
     """
-    N: total number of series
-    r: number of factors
-    group_assignments: list (of length N) that says which group/index each row i belongs to
-                      for example, group_assignments[i] = j means row i is assigned to factor j
-    scale: standard deviation for random loadings
-    normalize: whether to normalize each column to have unit norm
+    Generate an N x r loadings matrix from a mixture distribution:
+       0.5 * N(1, sigma^2) + 0.5 * N(-1, sigma^2).
+    
+    Parameters
+    ----------
+    N : int
+        Number of rows.
+    r : int
+        Number of columns (number of factors).
+    sigma : float
+        Standard deviation for the normal distributions.
+    seed : int or None, optional
+        If provided, ensures reproducible random draws. Default is None.
 
-    Returns:
-        A (N x r) array, block-structured loading matrix.
+    Returns
+    -------
+    L : np.ndarray of shape (N, r)
+        The loadings matrix.
     """
-    Lambda = np.zeros((N, r))
-
-    # Fill block j with random entries
-    for i in range(N):
-        # which factor does row i belong to?
-        j = group_assignments[i]
-        # fill the (i, j) entry with a draw from, say, N(0, scale^2)
-        Lambda[i, j] = np.random.normal(loc=0.0, scale=scale)
+    signs = rand_state.choice([-1, 1], size=(N, r))
     
-    # Optional: Normalize each column
-    if normalize:
-        for col in range(r):
-            col_norm = np.linalg.norm(Lambda[:, col])
-            if col_norm > 0:
-                Lambda[:, col] /= col_norm
+    base_noise = rand_state.normal(loc=0.0, scale=sigma, size=(N, r))
     
-    return Lambda
-
-def create_group_assignments(N, r):
-    """
-    Partition row indices 0..N-1 into r blocks, each block j is assigned factor j.
-    If N is not divisible by r, some blocks will have one extra row.
+    L = base_noise + signs
     
-    Returns:
-        A list of length N, where group_assignments[i] is the factor index for row i.
-    """
-    base_size = N // r          # integer division
-    extra = N % r               # remainder
-    group_assignments = []
-    
-    current_index = 0
-    for j in range(r):
-        # Block j size: either base_size or base_size + 1
-        block_size_j = base_size + (1 if j < extra else 0)
-        
-        # Extend group_assignments by 'block_size_j' copies of j
-        group_assignments.extend([j] * block_size_j)
-        
-        current_index += block_size_j
-        if current_index >= N:
-            break
-    
-    return group_assignments
-
-def block_loadings(N, r, scale=1.0, normalize=True):
-    assignments = create_group_assignments(N, r)
-    Lambda = np.zeros((N, r))
-    
-    for i, factor_idx in enumerate(assignments):
-        Lambda[i, factor_idx] = np.random.normal(0, scale)
-        # Lambda[i, factor_idx] = 1
-    
-    # Optional: normalize each column
-    if normalize:
-        for j in range(r):
-            norm_j = np.linalg.norm(Lambda[:, j])
-            if norm_j > 0:
-                Lambda[:, j] /= norm_j
-    return Lambda
-
-def random_loadings(N, r, scale=1.0, normalize=True, random_state=None):
-    """
-    Generate a random N x r loadings matrix with entries drawn from N(0, scale^2).
-    Optionally normalizes each column to have unit Euclidean norm.
-    
-    Args:
-        N (int): Number of rows (series).
-        r (int): Number of factors (columns).
-        scale (float): Std. dev. for normal draws. Defaults to 1.0.
-        normalize (bool): Whether to normalize each column to unit norm. Defaults to True.
-        random_state (int or None): Seed for reproducibility. Defaults to None (no fixed seed).
-
-    Returns:
-        numpy.ndarray: An N x r array of random loadings.
-    """
-    rng = np.random.default_rng(random_state)
-    # Draw an N x r matrix from Normal(0, scale^2)
-    Lambda = rng.normal(loc=0.0, scale=scale, size=(N, r))
-    
-    if normalize:
-        # Normalize each column to have unit Euclidean norm
-        for j in range(r):
-            col_norm = np.linalg.norm(Lambda[:, j])
-            if col_norm > 1e-12:
-                Lambda[:, j] /= col_norm
-            # If col_norm is very close to zero, the column remains (near) zero.
-    
-    return Lambda
+    return L
 
 ###### SIMULATION ###### 
 mspe_values = np.zeros((num_N,num_T,num_replicas))
 for index_N, N in enumerate(N_list ):
     for s in range(num_replicas): 
         # loadings_matrix = block_loadings(N=N,r=r,normalize=True) 
-        loadings_matrix = 2.5*random_loadings(N=N,r=r,scale=1,normalize=True,random_state=None)
+        loadings_matrix = 0.5*loadings(N=N,r=r,sigma=0.1,rand_state=random_state)
 
-
-        phi_dist = np.ones((N,N))
-
+        # phi_dist = np.ones((N,N))
+        phi_dist = random_state.normal(1,1,size=(N,N))
+        
         generate_NIRVAR = GenerateNIRVAR(random_state=random_state,
                                 T=T_max,
                                 B=B,
@@ -183,9 +112,11 @@ for index_N, N in enumerate(N_list ):
                                 Q=1,
                                 p_in=p_in,
                                 p_out=p_out,
-                                phi_distribution=None,
+                                phi_distribution=phi_dist,
                                 multiplier=VAR_spectral_radius,
-                                global_noise=1)
+                                global_noise=1,
+                                symmetrize_phi = symmetric_phi
+                                )
 
         Xi = generate_NIRVAR.generate()[:,:,0]
 
@@ -194,12 +125,12 @@ for index_N, N in enumerate(N_list ):
             [0.5, "white"],     # 0 maps to white (center of the scale)
             [1.0, "darkblue"]]   # highest values (most positive) are dark blue
 
-        # fig = go.Figure(data=go.Heatmap(z=generate_NIRVAR.phi_coefficients[:,0,:,0],
-        #                                 colorscale=custom_colorscale,
-        #                                 zmid=0  # ensures that 0 is mapped to the middle color (white)
-        #                                 ))
+        fig = go.Figure(data=go.Heatmap(z=generate_NIRVAR.phi_coefficients[:,0,:,0],
+                                        colorscale=custom_colorscale,
+                                        zmid=0  # ensures that 0 is mapped to the middle color (white)
+                                        ))
                                         
-        # fig.show()
+        fig.show()
         # fig.write_image(f"gt_phi_r_{r}.pdf")
 
         cov_Xi = Xi.T@Xi/T_max
@@ -262,7 +193,7 @@ for index_N, N in enumerate(N_list ):
             predictions_factors = np.zeros((n_backtest_days_tot,N))
 
             for t in range(n_backtest_days_tot):
-                print(f"backtest day {t}")
+                # print(f"backtest day {t}")
                 X_backtest_data = X_T[first_prediction_day+t-lookback_window:first_prediction_day+t] 
 
                 if estimation_model == "FNIRVAR":
@@ -281,7 +212,7 @@ for index_N, N in enumerate(N_list ):
                                         zmid=0  # ensures that 0 is mapped to the middle color (white)
                                         ))
                                         
-                    # fig.show()
+                    fig.show()
                     # fig.write_image(f"estimated_phi_r_hat_{r_hat}.pdf")
 
                     estimated_Xi_cov = Xi_estimated.T@Xi_estimated/T - np.identity(N)
@@ -290,7 +221,7 @@ for index_N, N in enumerate(N_list ):
                                         zmid=0  # ensures that 0 is mapped to the middle color (white)
                                         ))
                                         
-                    fig.show()
+                    # fig.show()
                     
                     predictions_t = factor_model.predict_common_component()[:,0] + Xi_hat[:] 
                     predictions[t,:] = predictions_t 
@@ -306,7 +237,7 @@ for index_N, N in enumerate(N_list ):
                                         zmid=0  # ensures that 0 is mapped to the middle color (white)
                                         ))
                                         
-                    fig.show()
+                    # fig.show()
 
                     predictions[t,:] = predictions_t 
 

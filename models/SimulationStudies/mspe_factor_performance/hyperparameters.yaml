@@ -8,7 +8,7 @@ p_in : 0.9
 p_out : 0.1
 use_HPC : FALSE 
 num_common_shocks : 5
-rho_F : 0.9
+rho_F : 0.6
 generative_model : 'FNIRVAR' # One of 'FactorsOnly', 'NIRVAR', 'FNIRVAR'
 estimation_model : 'FNIRVAR_vs_FactorsOnly' # One of 'FactorsOnly', 'NIRVAR', 'FNIRVAR'
 lookback_window : 1000
@@ -18,5 +18,6 @@ N_list : [100]
 num_replicas : 10
 NIRVAR_embedding_method : 'Pearson Correlation' #One of 'Pearson Correlation' (Default), 'Precision Matrix', 'Covariance Matrix' 
 VAR_spectral_radius : 0.9
+symmetric_phi : TRUE
 
 
