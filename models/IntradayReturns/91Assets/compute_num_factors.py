@@ -30,9 +30,9 @@ max_num_factors = config['max_num_factors']
 kth_eigengap = config['kth_eigengap']
 
 ###### READ IN DATA ######
-Xs = np.genfromtxt(sys.argv[1], delimiter=',')
+Xs = np.genfromtxt(sys.argv[1], delimiter=',', skip_header=1)[:, 2:] # Skip first two columns (date and time) and header 
 T = Xs.shape[0]
-N = Xs.shape[0] 
+N = Xs.shape[1] 
 
 ###### COMPUTE NUMBER OF FACTORS FOR EACH BACKTESTING DAY ######
 # Get a list of days to do backtesting on
@@ -69,6 +69,9 @@ for i, day in enumerate(days_to_backtest):
 
     # Store the result
     num_factors[i] = r 
+
+    print ("\033[A                             \033[A") 
+
 
 # Save results to CSV
 output_filename = 'estimated_num_factors.csv'

@@ -33,7 +33,7 @@ kth_eigengap = config['kth_eigengap']
 ###### READ IN DATA ######
 Xs = np.genfromtxt(sys.argv[1], delimiter=',')
 T = Xs.shape[0]
-N = Xs.shape[0] 
+N = Xs.shape[1] 
 
 ###### COMPUTE NUMBER OF FACTORS FOR EACH BACKTESTING DAY ######
 # Get a list of days to do backtesting on

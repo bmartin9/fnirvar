@@ -60,7 +60,7 @@ def load_df(path, date_col=None, time_col=None):
     return df
 
 
-def make_layout(interval, holiday_breaks):
+def make_layout(interval):
     return go.Layout(
         yaxis=dict(
             title=f"{interval} minutely returns",
@@ -79,7 +79,7 @@ def make_layout(interval, holiday_breaks):
             automargin=True,
             tickmode='auto',
             nticks=10,
-            rangebreaks=[ dict(bounds=[16, 9.5], pattern="hour"), dict(bounds=["sat", "mon"]), dict(values=holiday_breaks) ]
+            rangebreaks=[ dict(bounds=[16, 9.5], pattern="hour"), dict(bounds=["sat", "mon"]) ]
         ),
         legend=dict(
             x=1.02,
@@ -115,9 +115,6 @@ def plot_selected_returns(df, cols, interval, t0, T, verbose=False):
     if verbose:
         print(f"Sliced rows [{start}:{end}] → shape {sl.shape}")
 
-    trading_days = sl.index.normalize().unique()
-    full_calendar = pd.date_range(trading_days.min(), trading_days.max(), freq="D")
-    non_trading_days = full_calendar.difference(trading_days)
 
     # build traces
     traces = []
@@ -133,7 +130,7 @@ def plot_selected_returns(df, cols, interval, t0, T, verbose=False):
         ))
 
     # plot and write out
-    fig = go.Figure(data=traces, layout=make_layout(interval, holiday_breaks=non_trading_days))
+    fig = go.Figure(data=traces, layout=make_layout(interval))
     fig.write_image("returns_plot.pdf", format='pdf')
     time.sleep(1)
     fig.write_image("returns_plot.pdf", format='pdf')
