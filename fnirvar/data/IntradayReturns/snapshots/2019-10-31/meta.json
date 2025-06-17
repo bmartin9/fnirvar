@@ -1,0 +1,9 @@
+{
+  "bar": "30m",
+  "lookback_days": 60,
+  "T": 585,
+  "N": 509,
+  "demeaned": false,
+  "excess": true,
+  "bars": "30m"
+}

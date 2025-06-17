@@ -33,9 +33,10 @@ logging.basicConfig(
 #  Regex helpers
 # --------------------------------------------------------------------------- #
 #  Inside a daily CSV name      :  <TICKER>_YYYY-MM-DD_......
-DAY_RE   = re.compile(r"^([A-Z]+)_(\d{4}-\d{2}-\d{2})_")
+DAY_RE   = re.compile(r"^([^_]+)_(\d{4}-\d{2}-\d{2})_")
 #  Whole archive file name      :  .....__<TICKER>_YYYY-... .7z
-TICKER_RE = re.compile(r"([A-Z]+)_\d{4}-\d{2}-\d{2}")
+TICKER_RE = re.compile(r"([^_]+)_\d{4}-\d{2}-\d{2}")
+
 
 # --------------------------------------------------------------------------- #
 def load_day_csv(buf: bytes, csv_name: str) -> tuple[str, pl.DataFrame]:
@@ -97,8 +98,7 @@ def write_day(df: pl.DataFrame, asset: str, date_str: str) -> None:
 #  ARCHIVE-LEVEL WORKER  (temp-folder method, works on every py7zr version)
 # ────────────────────────────────────────────────────────────────────────────
 def process_archive(archive_path: pathlib.Path) -> None:
-    m = TICKER_RE.search(archive_path.stem)
-    asset = m.group(1) if m else archive_path.stem
+    asset = TICKER_RE.search(archive_path.stem).group(1)
     print(f"[{asset}]  start", flush=True)
 
     try:
@@ -107,15 +107,22 @@ def process_archive(archive_path: pathlib.Path) -> None:
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 for csv_name in member_names:
-                    # ➊  extract just this file
                     z.extract(path=tmpdir, targets=[csv_name])
-
                     csv_path = pathlib.Path(tmpdir) / csv_name
-                    with open(csv_path, "rb") as fh:
+
+                    # ——— NEW: skip zero-byte members ————————————————
+                    if csv_path.stat().st_size == 0:
+                        logging.warning(
+                            "Ticker %s  empty CSV skipped  (%s)",
+                            asset, csv_name,
+                        )
+                        os.remove(csv_path)
+                        continue
+                    # ————————————————————————————————————————————————
+
+                    with csv_path.open("rb") as fh:
                         date_str, df_day = load_day_csv(fh.read(), csv_name)
                         write_day(df_day, asset, date_str)
-
-                    # ➋  immediately free the handle & inode
                     os.remove(csv_path)
 
     except Exception as exc:
@@ -123,6 +130,7 @@ def process_archive(archive_path: pathlib.Path) -> None:
         raise
 
     print(f"[{asset}]  done", flush=True)
+
 
 
 # --------------------------------------------------------------------------- #
