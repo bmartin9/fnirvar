@@ -55,6 +55,14 @@ class BarReader:
             pf = BARS / t / f"{ym}.parquet"
             self.cache[t] = (pl.read_parquet(pf).with_columns(pl.col("ts").dt.replace_time_zone(None)))
         self.ts_vec = self.cache[self.tickers[0]]["ts"].to_numpy()
+        ts_common = set(self.cache[self.tickers[0]]["ts"].to_list())
+        for t in self.tickers[1:]:
+            ts_common &= set(self.cache[t]["ts"].to_list())
+        self.ts_vec = np.array(sorted(ts_common), dtype="datetime64[ns]")
+        full_bars = self.cache[self.tickers[0]].shape[0]
+        if len(self.ts_vec) < full_bars:
+            missing = full_bars - len(self.ts_vec)
+            print(f"[{ym}] dropped {missing} bars due to incomplete coverage")
         self.loaded_ym = ym
 
     def row(self, ts: dt.datetime) -> np.ndarray:
@@ -115,7 +123,8 @@ def run():
 
 
         for ts64 in ts_vec:
-            ts = ts64.item()    
+            # ts = ts64.item()    
+            ts = ts64.astype('datetime64[us]').astype(dt.datetime)
             if ts.date() < (dt.date.fromisoformat(sdir.name)+dt.timedelta(days=1)):
                 continue
             if next_snap_dt and ts.date() >= next_snap_dt:
