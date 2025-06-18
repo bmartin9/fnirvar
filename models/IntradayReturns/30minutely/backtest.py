@@ -100,8 +100,7 @@ def run():
 
     for si, sdir in enumerate(snap_dirs):
         meta,L,P_hat,Phi,Fbuf,xi_prev,tickers = load_snap(sdir)
-        if reader is None:
-            reader = BarReader(tickers)
+        reader = BarReader(tickers)
 
         next_snap = snap_dirs[si+1] if si+1 < len(snap_dirs) else None
         next_snap_dt = dt.date.fromisoformat(next_snap.name) if next_snap else None
