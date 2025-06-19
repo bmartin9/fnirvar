@@ -1,16 +1,8 @@
 {
   "bar": "30m",
   "lookback_days": 60,
-  "T": 574,
-  "N": 463,
   "demeaned": false,
   "excess": true,
-  "bars": "30m",
-  "k_hat": 11,
-  "lF": 5,
-  "d_hat": 34,
-  "K": 34,
-  "factor_lags": 5,
-  "embedding": "Pearson Correlation",
-  "clustering": "GMM"
+  "T": 533,
+  "N": 464
 }

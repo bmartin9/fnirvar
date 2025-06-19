@@ -1,27 +1,32 @@
 #!/usr/bin/env python
 """
 build_returns_data.py
-Convert 1-minute mid-prices (data_parquet/<TICKER>/<YYYY-MM>/...)
+Convert 1-minute mid-prices (data_parquet/<TICKER>/<YYYY-MM>/…)
 into 5- or 30-minute log returns.
+
+• 30-minute variant:   first bar is 10:00, return = log(P10:00 / P09:30)
+                       (overnight jump 16:00→09:30 is excluded)
+• 5-minute variant  :  trims the opening/closing 15 min, so first bar
+                       is 09:45–09:50, last bar is 15:45–15:50.
 
 Usage
 -----
 # Single asset, 30-minute bars
 python build_returns_data.py --bar 30m AAPL
 
-# All assets, 5-minute bars (drops first/last 15 min of day)
+# All assets, 5-minute bars
 python build_returns_data.py --bar 5m
 """
 from __future__ import annotations
-import argparse, pathlib, sys, itertools, datetime as dt, glob
+import argparse, pathlib, glob, datetime as dt
 from concurrent.futures import ProcessPoolExecutor
-import polars as pl
 from itertools import repeat
+import polars as pl
 
-SRC_ROOT = pathlib.Path("data_parquet")          # minute layer
-DST_ROOT = pathlib.Path("data_bars")             # output root
+SRC_ROOT = pathlib.Path("data_parquet")   # minute layer
+DST_ROOT = pathlib.Path("data_bars")      # output root
 
-# ──────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────
 def parse_cli() -> argparse.Namespace:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bar", choices=("5m", "30m"), required=True,
@@ -33,27 +38,22 @@ def parse_cli() -> argparse.Namespace:
 def all_assets() -> list[str]:
     return sorted(p.name for p in SRC_ROOT.iterdir() if p.is_dir())
 
-# trim helper for 5-minute variant
-def trim_open_close(df: pl.LazyFrame) -> pl.LazyFrame:
-    return df.filter(
-        (pl.col("ts").dt.time() >= dt.time(9, 45)) &
-        (pl.col("ts").dt.time() <  dt.time(15, 45))
-    )
-
+# ──────────────────────────────────────────────────────────────────
 def resample_asset(asset: str, bar: str):
-    # ── 1  find all minute-files first (Python glob) ───────────────────────
+    # 1) gather minute files
     pattern = SRC_ROOT / asset / "*/*.parquet"
     minute_files = glob.glob(str(pattern))
     if not minute_files:
-        print(f"[{asset}]   ⚠  no minute files found — skipping")
+        print(f"[{asset}]  ⚠  no minute files — skipping")
         return
 
-    # ── 2  build lazy scan from that explicit list  ────────────────────────
-    lazy = pl.scan_parquet(minute_files).with_columns(pl.col("ts"))
+    # 2) lazy scan
+    lf = pl.scan_parquet(minute_files).with_columns(
+            pl.col("ts").dt.replace_time_zone(None)  # drop UTC
+         )
 
-    # drop first & last 15min only for 5-minute bars
     if bar == "5m":
-        lazy = lazy.filter(
+        lf = lf.filter(
             (pl.col("ts").dt.time() >= dt.time(9, 45)) &
             (pl.col("ts").dt.time() <  dt.time(15, 45))
         )
@@ -61,44 +61,49 @@ def resample_asset(asset: str, bar: str):
     else:
         every = "30m"
 
-    # ── 3  resample and compute log-return  ───────────────────────────────
-    lazy = lazy.sort("ts")
+    # 3) build bars: [start, end] inclusive, label by window end
     bars = (
-        lazy.group_by_dynamic(
-                index_column="ts",
-                every=every,             # "5m" or "30m"
-                closed="right",
-                label="right",
-        )
-        .agg(pl.col("mid_px").last().alias("px"))
-        .with_columns(
-            pl.col("px").log().diff().alias("log_ret"),
-            pl.col("ts").dt.strftime("%Y-%m").alias("ym"),
-        )
-        .drop_nulls("log_ret")
-        .collect()                      # eager collect (no streaming flag)
+        lf.sort("ts")
+          .group_by_dynamic(
+              index_column="ts",
+              every=every,
+              period=every,
+              closed="both",     # include open & close rows
+              label="right",     # stamp by window end (10:00, 10:30…)
+          )
+          .agg([
+              pl.col("mid_px").first().alias("px_open"),
+              pl.col("mid_px").last().alias("px_close"),
+              pl.len().alias("n"),
+          ])
+          .with_columns(                       # log-return
+              (pl.col("px_close").log() - pl.col("px_open").log())
+              .alias("log_ret"),
+              pl.col("ts").dt.strftime("%Y-%m").alias("ym"),
+          )
+          .filter(pl.col("n") > 1) 
+          .drop("px_open", "px_close", "n")
+          .collect()
     )
     if bars.height == 0:
-        print(f"[{asset}]   ⚠  resample produced 0 rows — check data gaps")
+        print(f"[{asset}]  ⚠  resample produced 0 rows")
         return
 
-    # ── 4  write one Parquet per month  ────────────────────────────────────
+    # 4) write one parquet per YYYY-MM
     out_root = DST_ROOT / bar / asset
     out_root.mkdir(parents=True, exist_ok=True)
+    for key, grp in bars.partition_by("ym", as_dict=True).items():
+        ym = key[0] if isinstance(key, tuple) else key
+        grp.drop("ym").write_parquet(out_root / f"{ym}.parquet",
+                                     compression="snappy")
 
-    for key, group in bars.partition_by("ym", as_dict=True).items():
-        ym_str = key[0] if isinstance(key, tuple) else key    # unwrap tuple → "2007-06"
-        file_path = out_root / f"{ym_str}.parquet"
-        group.drop("ym").write_parquet(file_path, compression="snappy")
+    print(f"[{asset}]  ✓  wrote {bars.height:,} bars")
 
-    print(f"[{asset}]   ✓  wrote {bars.height:,} bars")
-
-# ──────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     args    = parse_cli()
     tickers = args.tickers or all_assets()
 
-    # pass two iterables: tickers  and an endless repeat of the bar-width
     with ProcessPoolExecutor() as ex:
         for _ in ex.map(resample_asset, tickers, repeat(args.bar)):
-            pass                     # forces iteration so exceptions surface
+            pass   # forces iteration so exceptions surface
