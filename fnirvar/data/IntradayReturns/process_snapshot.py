@@ -32,7 +32,8 @@ def process_snapshot(snap_dir: pathlib.Path, kmax: int = 25, lF: int = 5,
     X = pl.read_parquet(snap_dir / "X.parquet").to_numpy()
 
     # 2) eigenvalue-ratio test
-    k_hat = GR(X, kmax=kmax)
+    # k_hat = GR(X, kmax=kmax)
+    k_hat = int(5)
     # k_hat, _, _, _ = baing(X=X,kmax=kmax,jj=2) 
 
     # 3) factor adjustment

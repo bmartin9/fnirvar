@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse, json, pathlib, datetime as dt, glob
 from dateutil.relativedelta import relativedelta
 import polars as pl
+import numpy as np
 
 BAR_FREQ       = "30m"
 LOOKBACK_DAYS  = 60
@@ -32,7 +33,7 @@ def parse_cli():
                     help="Work with market-excess returns (subtract SPY)")
     return ap.parse_args()
 
-def month_ends(start="2007-08-31", stop="2021-12-31"):
+def month_ends(start="2007-10-31", stop="2021-12-31"):
     d = dt.date.fromisoformat(start)
     end = dt.date.fromisoformat(stop)
     while d <= end:
@@ -98,6 +99,23 @@ def build_snapshot(month_end: dt.date):
 
     # 3️⃣ build raw X
     X = pl.DataFrame({t: col for t, col in zip(good, matrices)})
+
+    # ─── drop tickers that contain ANY NaN/Inf in the 60-day window ─────────
+    finite_mat = X.select(pl.all().is_finite()).to_numpy()      # shape (T,N)
+    good_mask  = finite_mat.all(axis=0)                         # bool per col
+    if not good_mask.all():
+        bad_cols  = [c for c, ok in zip(X.columns, good_mask) if not ok]
+        print(f"{month_end} – dropping {len(bad_cols)} bad tickers:", bad_cols[:5], "…")
+        keep_cols = [c for c, ok in zip(X.columns, good_mask) if ok]
+        X         = X.select(keep_cols)
+        good      = [t for t, ok in zip(good, good_mask) if ok]
+
+    if not good:            # nothing left after cleaning
+        print(f"{month_end} – snapshot empty after clean-up; skipping")
+        return
+
+    N = len(good)           # recompute after drop
+
 
     # 4️⃣ optional market-excess
     if args.excess:
