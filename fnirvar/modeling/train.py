@@ -463,6 +463,7 @@ class FactorAdjustment():
         Function to estimate the idiosyncratic component.
         """
         xi = self.X - self.static_factors() @ self.loadings().T
+        # print(f"Idio explained variance: {np.var(xi) / np.var(self.X)}")
         return xi  
     
     def predict_common_component(self):

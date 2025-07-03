@@ -15,9 +15,10 @@ import argparse, json, pathlib, datetime as dt, glob
 from dateutil.relativedelta import relativedelta
 import polars as pl
 import numpy as np
+from dateutil.relativedelta import relativedelta
 
 BAR_FREQ       = "30m"
-LOOKBACK_DAYS  = 60
+LOOKBACK_DAYS  = 120
 SRC_ROOT       = pathlib.Path("data_bars") / BAR_FREQ
 DST_ROOT       = pathlib.Path("snapshots")
 
@@ -33,13 +34,19 @@ def parse_cli():
                     help="Work with market-excess returns (subtract SPY)")
     return ap.parse_args()
 
-def month_ends(start="2007-10-31", stop="2021-12-31"):
+def month_ends(start="2007-10-31", stop="2021-11-30"):
     d = dt.date.fromisoformat(start)
     end = dt.date.fromisoformat(stop)
-    while d <= end:
-        month_end = (d.replace(day=1) + dt.timedelta(days=32)).replace(day=1) - dt.timedelta(days=1)
+    
+
+    cur = d
+    while cur <= end:
+        month_end = (cur.replace(day=1) +
+                    relativedelta(months=+1) -
+                    dt.timedelta(days=1))
         yield month_end
-        d = (d + dt.timedelta(days=32)).replace(day=1)
+
+        cur = month_end + dt.timedelta(days=1)  
 
 # ───────────────────────── snapshot builder ─────────────
 def build_snapshot(month_end: dt.date):

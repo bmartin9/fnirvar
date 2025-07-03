@@ -1,7 +1,7 @@
 #PBS -N backtesting 
 #PBS -l walltime=00:30:00 
-#PBS -l select=1:ncpus=173:mem=8gb
-#PBS -J 1-173
+#PBS -l select=1:ncpus=172:mem=8gb
+#PBS -J 1-172
 
 
 module load anaconda3/personal

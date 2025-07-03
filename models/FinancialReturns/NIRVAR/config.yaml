@@ -4,14 +4,14 @@ n_backtest_days : 4275
 first_prediction_day : 1003 # first day to start making predictions (python index)
 lookback_window : 1003 
 varying_factors : FALSE # whether the estimated number of factors changes over the backtesting window
-num_factors : 20 
+num_factors : 5
 save_loadings : FALSE # whether to save the loadings
 save_factors : FALSE # whether to save the factors 
 save_predictions : TRUE # whether to save the predictions
 save_labels : TRUE # whether to save the nirvar estimated GMM cluster labels
 factor_lags : 5
 NIRVAR_embedding_method : 'Pearson Correlation' #One of 'Pearson Correlation' (Default), 'Precision Matrix', 'Covariance Matrix'
-use_HPC : TRUE # whether to use the HPC
+use_HPC : FALSE # whether to use the HPC
 Q : 4 # number of features of data
 target_feature : 1 # The feature you want to predict
 transaction_cost : 0 # cost of a single transaction in bpts

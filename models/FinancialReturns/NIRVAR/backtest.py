@@ -87,6 +87,8 @@ if factor_model == 'Static' and idiosyncratic_model_name == 'NIRVAR':
         idiosyncratic_model = NIRVAR(Xi=Xi,
                                      embedding_method=NIRVAR_embedding_method) 
         Xi_hat = idiosyncratic_model.predict_idiosyncratic_component() 
+        print(factor_model.predict_common_component()[0,0])
+        print(Xi_hat[0])
         predictions[i, :] = factor_model.predict_common_component()[:,0] + Xi_hat
 
         if save_labels:

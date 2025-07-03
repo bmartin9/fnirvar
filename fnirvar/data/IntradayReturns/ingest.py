@@ -55,6 +55,17 @@ def load_day_csv(buf: bytes, csv_name: str) -> tuple[str, pl.DataFrame]:
         },
         null_values=["", "NaN", "-9999999999","9999999999"]
     )
+    # ------------ drop-wide-spread rows -------------------------------
+    .with_columns(
+        (
+            (pl.col("ask_1") - pl.col("bid_1"))
+            / (pl.col("ask_1") + pl.col("bid_1"))
+        ).alias("spread_frac")
+    )
+    .filter(pl.col("spread_frac") <= 0.005)           # 50 bp = 0.005
+    .drop("spread_frac")
+
+    # ------------ build timestamp & mid-price -------------------------
     .with_columns(
         # ───── correct timestamp construction ───────────────
         (

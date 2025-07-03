@@ -84,6 +84,12 @@ def resample_asset(asset: str, bar: str):
           .filter(pl.col("n") > 1) 
           .drop("px_open", "px_close", "n")
           .collect()
+          .with_columns(
+              pl.when(pl.col("log_ret").abs() > 0.25) # Set outliers (returns of over 25 percent) to 0
+                .then(pl.lit(0.0, dtype=pl.Float32))
+                .otherwise(pl.col("log_ret"))
+                .alias("log_ret")
+          )
     )
     if bars.height == 0:
         print(f"[{asset}]  ⚠  resample produced 0 rows")

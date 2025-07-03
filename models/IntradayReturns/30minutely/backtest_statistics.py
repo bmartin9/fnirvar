@@ -11,8 +11,8 @@ from scipy.stats import spearmanr
 ROOT = pathlib.Path(
     "~/phd/projects/factors/fnirvar/fnirvar/data/IntradayReturns"
 ).expanduser()
-PRED = pathlib.Path(__file__).resolve().parent / "backtest_outputs" / "pred_all.parquet"
-REAL = pathlib.Path(__file__).resolve().parent / "realised_all.parquet"
+PRED = pathlib.Path(__file__).resolve().parent / "backtest_outputs" / "predictions_all.parquet"
+REAL = pathlib.Path(__file__).resolve().parent / "realised_excess.parquet"
 OUT  = pathlib.Path(__file__).resolve().parent / "30minutely_results"
 OUT.mkdir(exist_ok=True)
 
@@ -32,8 +32,27 @@ class IntradayBenchmark:
         self.sign_rets = np.sign(self.r)
 
     # hit / long ratios ------------------------------------------------------
-    def hit_ratio (self): return float(((self.sign_pred * self.sign_rets) > 0).mean())
-    def long_ratio(self): return float((self.sign_pred > 0).mean())
+    @staticmethod
+    def _ratio(numerator_mask: np.ndarray, valid_mask: np.ndarray) -> float:
+        """Return sum(numerator_mask) / sum(valid_mask)  (NaN-safe)."""
+        denom = valid_mask.sum()
+        return float(numerator_mask.sum() / denom) if denom else np.nan
+
+    # hit / long ratios ------------------------------------------------------
+    def hit_ratio(self) -> float:
+        valid = (~np.isnan(self.sign_pred)) & (~np.isnan(self.sign_rets))
+        hits  = (self.sign_pred * self.sign_rets > 0) & valid
+        return self._ratio(hits, valid)
+
+    def long_ratio(self) -> float:
+        valid = ~np.isnan(self.sign_pred)
+        longs = (self.sign_pred > 0) & valid
+        return self._ratio(longs, valid)
+
+    def percent_positive_returns(self) -> float:
+        valid  = ~np.isnan(self.sign_rets)
+        posret = (self.sign_rets > 0) & valid
+        return self._ratio(posret, valid)
 
     # average bar-wise Spearman ---------------------------------------------
     def spearman(self):
@@ -45,50 +64,70 @@ class IntradayBenchmark:
     # equal-weight PnL with turnover cost -----------------------------------
     import numpy as np
 
+    # ----------------------------------------------------------------------
+    # inside IntradayBenchmark
+    # ----------------------------------------------------------------------
     def pnl(self, q: float = 1.0):
         """
+        Parameters
+        ----------
+        q : float in (0, 1]
+            Percentile of absolute-prediction magnitude to trade.  q = 1.0
+            means “trade everything”, q = 0.20 means “top 20 %”.
         Returns
         -------
-        gross : np.ndarray[float]
-            Per-bar gross PnL.
-        net   : np.ndarray[float]
-            Per-bar net PnL after turnover cost.
-        trades: np.ndarray[int]
-            Number of round-trip trades executed in each bar.
+        gross  : np.ndarray[float32]
+        net    : np.ndarray[float32]
+        trades : np.ndarray[int32]
         """
-        w_prev = np.zeros(self.N, np.float32)
+        w_prev = np.zeros(self.N, dtype=np.float32)
 
         gross, net, trades = [], [], []
         p_abs = np.abs(self.p)
 
         for t in range(self.T):
-            # ---------- portfolio mask (top-|q|%) -----------------------------
-            cutoff = np.quantile(p_abs[t][~np.isnan(p_abs[t])], 1 - q) if q < 1 else -np.inf
-            mask   = p_abs[t] >= cutoff
+            # ── STEP 1: select tradable universe (valid preds & rets) ──────────
+            valid = (~np.isnan(self.p[t])) & (~np.isnan(self.r[t]))
+            if not valid.any():                        # corner-case ①
+                gross.append(0.0)
+                net  .append(0.0)
+                trades.append(0)
+                w_prev = np.zeros_like(w_prev)
+                continue
 
-            # ---------- target weights  --------------------------------------
-            w = np.zeros(self.N, np.float32)
-            longs, shorts = (self.p[t] > 0) & mask, (self.p[t] <= 0) & mask
-            if longs.any():  w[longs]  =  1.0 / longs.sum()
-            if shorts.any(): w[shorts] = -1.0 / shorts.sum()
+            # ── STEP 2: percentile cutoff within the *valid* set ───────────────
+            if q < 1.0:
+                cutoff = np.quantile(p_abs[t][valid], 1 - q)
+            else:
+                cutoff = -np.inf
 
-            # ---------- turnover & trades ------------------------------------
+            mask = valid & (p_abs[t] >= cutoff)        # assets we will trade
+
+            # ── STEP 3: build target weights ───────────────────────────────────
+            w      = np.zeros(self.N, dtype=np.float32)
+            longs  = (self.p[t] > 0) & mask
+            shorts = (self.p[t] < 0) & mask
+
+            if longs.any():   w[longs]  =  1.0 / longs.sum()
+            if shorts.any():  w[shorts] = -1.0 / shorts.sum()
+
+            # ── STEP 4: turnover & trade count ─────────────────────────────────
             dw       = np.abs(w - w_prev)
-            turnover = np.sum(dw)                    # ∑|Δw|
-            n_trades = int(np.count_nonzero(dw))     # trades executed this bar
+            turnover = dw.sum()
+            n_trades = int((dw > 0).sum())
 
-            # ---------- PnL ---------------------------------------------------
-            g = np.nansum(w * self.r[t])             # ignore NaNs in returns panel
+            # ── STEP 5: PnL (valid returns only) ───────────────────────────────
+            g = np.dot(w[mask], self.r[t][mask]).item()    # same as nansum but no NaNs left
             n = g - self.tcost * turnover
 
-            gross.append(g)
-            net.append(n)
+            gross .append(g)
+            net   .append(n)
             trades.append(n_trades)
 
             w_prev = w
 
-        return (np.asarray(gross, dtype=np.float32),
-                np.asarray(net,   dtype=np.float32),
+        return (np.asarray(gross , dtype=np.float32),
+                np.asarray(net   , dtype=np.float32),
                 np.asarray(trades, dtype=np.int32))
 
 
@@ -101,11 +140,8 @@ def main():
 
     # 1. load & shift predictions ------------------------------------------
     preds = pl.read_parquet(PRED).with_columns(
-        (pl.col("ts") + dt.timedelta(minutes=30)).alias("ts")   # t  → t+1
+        (pl.col("ts")).alias("ts")  
     )
-
-    # drop the synthetic 16:30 bar (predicts overnight)
-    preds = preds.filter(pl.col("ts").dt.time() != dt.time(16, 30))
 
     # 2. load realised and discard the very first bar (10:00)
     reals = (pl.read_parquet(REAL)
@@ -176,6 +212,7 @@ def main():
     "assets":        bench.N,
     "hit_ratio":     bench.hit_ratio(),
     "long_ratio":    bench.long_ratio(),
+    "percent_positive_returns": bench.percent_positive_returns(),
     "spearman":      bench.spearman(),
 
     "gross_pnl_sum": float(np.nansum(gross)),
