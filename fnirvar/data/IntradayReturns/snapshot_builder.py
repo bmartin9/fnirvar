@@ -18,7 +18,7 @@ import numpy as np
 from dateutil.relativedelta import relativedelta
 
 BAR_FREQ       = "30m"
-LOOKBACK_DAYS  = 120
+LOOKBACK_DAYS  = 180
 SRC_ROOT       = pathlib.Path("data_bars") / BAR_FREQ
 DST_ROOT       = pathlib.Path("snapshots")
 
@@ -34,7 +34,7 @@ def parse_cli():
                     help="Work with market-excess returns (subtract SPY)")
     return ap.parse_args()
 
-def month_ends(start="2007-10-31", stop="2021-11-30"):
+def month_ends(start="2007-12-31", stop="2021-11-30"):
     d = dt.date.fromisoformat(start)
     end = dt.date.fromisoformat(stop)
     
