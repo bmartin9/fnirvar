@@ -9,7 +9,8 @@ module load anaconda3/personal
 source activate fnirvar
 
 export DESIGN_FILE='../../../data/FinancialReturns/processed/stocks_no_market_cleaned.csv'
-export NUM_FACTORS='estimated_num_factors.csv'
+export NUM_FACTORS='num_factors/estimated_num_factors_PCp2.csv'
+export NUM_FACTORS='PCp2estimated_lag_order.csv'
 export OUTPUT_DIRECTORY='20Factors+NIRVAR'
 cd $PBS_O_WORKDIR
 python backtest.py $DESIGN_FILE config.yaml $NUM_FACTORS 

@@ -129,7 +129,12 @@ elif factor_model == 'Static' and idiosyncratic_model_name == 'None':
             current_r = factor_csv[i]
         else:
             current_r = r
-        model = FactorAdjustment(X, current_r, lF)
+
+        if varying_factor_lags:
+            current_lF = lag_order_csv[i]
+        else:
+            current_lF = lF
+        model = FactorAdjustment(X, current_r, current_lF)
         predictions[i, :] = model.predict_common_component()[:,0] 
 
 elif factor_model == 'Static' and idiosyncratic_model_name == 'LASSO':
@@ -142,7 +147,13 @@ elif factor_model == 'Static' and idiosyncratic_model_name == 'LASSO':
             current_r = factor_csv[i]
         else:
             current_r = r
-        factor_model = FactorAdjustment(X, current_r, lF)
+
+        if varying_factor_lags:
+            current_lF = lag_order_csv[i]
+        else:
+            current_lF = lF
+
+        factor_model = FactorAdjustment(X, current_r, current_lF)
         Xi = factor_model.get_idiosyncratic_component()
         idiosyncratic_model = LASSO(Xi=Xi) 
         if LASSO_hyperparameter_tuning == 'None' :
