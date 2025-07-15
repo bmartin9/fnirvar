@@ -65,6 +65,7 @@ for i, day in enumerate(days_to_backtest):
     elif num_factors_method == 'PCp3':
         r, _, _, _ = baing(X=X,kmax=max_num_factors,jj=3) 
     # Store the result
+    print(f"day {i} factors {r}")
     num_factors[i] = r 
 
 # Save results to CSV

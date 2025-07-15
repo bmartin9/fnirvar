@@ -23,7 +23,7 @@ def save_dataframe(mat: np.ndarray, path: pathlib.Path, col_prefix="c"):
     pl.from_numpy(mat, schema=cols).write_parquet(path, compression="snappy")
 
 # ---------------- main ------------------------------------------------------
-def process_snapshot(snap_dir: pathlib.Path, kmax: int = 25, lF: int = 5,
+def process_snapshot(snap_dir: pathlib.Path, kmax: int = int(20), lF: int = 5,
                      embed_method="Pearson Correlation",
                      clustering="GMM", gmm_seed: int = 432):
     print(f"[{snap_dir.name}]  start")
@@ -31,10 +31,16 @@ def process_snapshot(snap_dir: pathlib.Path, kmax: int = 25, lF: int = 5,
     # 1) load X
     X = pl.read_parquet(snap_dir / "X.parquet").to_numpy()
 
+    N = X.shape[1]
+    kmax = int(min(kmax, N)) # k cannot be greater than N
+
     # 2) eigenvalue-ratio test
     # k_hat = GR(X, kmax=kmax)
-    k_hat = int(5)
-    # k_hat, _, _, _ = baing(X=X,kmax=kmax,jj=2) 
+    # k_hat = int(5)
+    
+    print(f"N: {N}") 
+    k_hat, _, _, _ = baing(X=X,kmax=kmax,jj=2) 
+
 
     # 3) factor adjustment
     FA  = FactorAdjustment(X, r=k_hat, lF=lF)

@@ -477,6 +477,7 @@ class FactorAdjustment():
         predicted_common_component = loadings @ P_hat @ G_hat_t 
         return predicted_common_component 
     
+    
 ###### FUNCTIONS FOR COMPUTING BEST FIT MARCENKO-PASTUR DISTRIBUTION ######
     
 def ks_statistic(sigma_squared, data, q):

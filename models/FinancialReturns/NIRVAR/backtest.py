@@ -4,7 +4,7 @@ NOTE: It is assumed that the backtest_design input file is clean: no NA values a
 """
 
 #!/usr/bin/env python3 
-# USAGE: ./backtest.py <DESIGN_MATRIX>.csv backtesting_config.yaml num_factors.csv 
+# USAGE: ./backtest.py <DESIGN_MATRIX>.csv backtesting_config.yaml num_factors.csv lag_orders.csv
 
 import numpy as np
 import sys
@@ -26,6 +26,7 @@ n_backtest_days_tot = config['n_backtest_days']
 first_prediction_day = config['first_prediction_day']
 lookback_window = config['lookback_window']
 varying_factors = config['varying_factors'] 
+varying_factor_lags = config['varying_factor_lags']
 save_loadings = config['save_loadings'] 
 save_factors = config['save_factors'] 
 save_predictions = config['save_predictions']
@@ -71,6 +72,10 @@ Xs = Xs[:,:,1] #pvCLCL
 if varying_factors:
     factor_csv = np.genfromtxt(sys.argv[3], delimiter=',',dtype='int')
 
+###### READ IN FACTOR LAG ORDERS ######
+if varying_factor_lags:
+    lag_order_csv = np.genfromtxt(sys.argv[4], delimiter=',',dtype='int')
+
 ###### BACKTESTING ###### 
 if factor_model == 'Static' and idiosyncratic_model_name == 'NIRVAR':
     predictions = np.zeros((n_backtest_days, N)) 
@@ -82,7 +87,12 @@ if factor_model == 'Static' and idiosyncratic_model_name == 'NIRVAR':
             current_r = factor_csv[i]
         else:
             current_r = r
-        factor_model = FactorAdjustment(X, current_r, lF)
+
+        if varying_factor_lags:
+            current_lF = lag_order_csv[i]
+        else:
+            current_lF = lF
+        factor_model = FactorAdjustment(X, current_r, current_lF)
         Xi = factor_model.get_idiosyncratic_component()
         idiosyncratic_model = NIRVAR(Xi=Xi,
                                      embedding_method=NIRVAR_embedding_method) 
