@@ -15,7 +15,9 @@ from fnirvar.modeling.train import ER
 from fnirvar.modeling.train import GR               
 from fnirvar.modeling.train import baing             
 from fnirvar.modeling.train   import FactorAdjustment   
-from fnirvar.modeling.train  import NIRVAR             
+from fnirvar.modeling.train  import NIRVAR 
+from statsmodels.tsa.api import VAR
+
 
 # ---------------- helper ----------------------------------------------------
 def save_dataframe(mat: np.ndarray, path: pathlib.Path, col_prefix="c"):
@@ -24,7 +26,7 @@ def save_dataframe(mat: np.ndarray, path: pathlib.Path, col_prefix="c"):
 
 # ---------------- main ------------------------------------------------------
 def process_snapshot(snap_dir: pathlib.Path, kmax: int = int(20), lF: int = 5,
-                     embed_method="Pearson Correlation",
+                     embed_method="Pearson Correlation", varying_lF = False,
                      clustering="GMM", gmm_seed: int = 432):
     print(f"[{snap_dir.name}]  start")
 
@@ -38,13 +40,24 @@ def process_snapshot(snap_dir: pathlib.Path, kmax: int = int(20), lF: int = 5,
     # k_hat = GR(X, kmax=kmax)
     # k_hat = int(5)
     
-    print(f"N: {N}") 
     k_hat, _, _, _ = baing(X=X,kmax=kmax,jj=2) 
-
 
     # 3) factor adjustment
     FA  = FactorAdjustment(X, r=k_hat, lF=lF)
     F   = FA.static_factors().astype(np.float32)   # (T × k̂)
+
+    model = VAR(F) 
+    results = model.fit(maxlags=10, ic='aic') 
+    lF_estimated = max(results.k_ar,1)
+    print(f"N: {N} factors {k_hat} lags {lF_estimated}") 
+
+    if varying_lF:
+        lF = lF_estimated
+        FA  = FactorAdjustment(X, r=k_hat, lF=lF_estimated)
+        F   = FA.static_factors().astype(np.float32)   # (T × k̂)
+    else:
+        lF = lF 
+
     L   = FA.loadings().astype(np.float32)         # (N × k̂)
     Xi  = FA.get_idiosyncratic_component().astype(np.float32)  # (T × N)
     Factor_Phi = FA.factor_linear_model().astype(np.float32)    # (r × r·lF)

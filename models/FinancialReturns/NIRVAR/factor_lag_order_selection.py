@@ -62,7 +62,7 @@ for i, day in enumerate(days_to_backtest):
     
     model = VAR(factor_design) 
     results = model.fit(maxlags=10, ic='aic') 
-    lF_estimated = min(results.k_ar,1)
+    lF_estimated = max(results.k_ar,1)
     print(f"day {i} factors {current_r} lags {lF_estimated}") 
     estimated_lags[i] = lF_estimated 
 
