@@ -17,6 +17,8 @@ from numpy.random import default_rng
 import ast
 import plotly.express as px
 import plotly.graph_objects as go
+from fnirvar.modeling.train import LASSO
+
 
 
 with open(sys.argv[1], "r") as f:
@@ -47,6 +49,9 @@ if generative_model == 'FactorsOnly':
     generative_model = None 
 if estimation_model == 'FactorsOnly':
     estimation_model = None 
+LASSO_penalty = config['LASSO_penalty']
+LASSO_hyperparameter_tuning = config['LASSO_hyperparameter_tuning']
+
 
 num_N = len(N_list)
 num_T = len(T_list)
@@ -97,10 +102,11 @@ def loadings(N, r, sigma, rand_state):
 
 ###### SIMULATION ###### 
 mspe_values = np.zeros((num_N,num_T,num_replicas))
+std_error_values = np.zeros((num_N,num_T,num_replicas))
 for index_N, N in enumerate(N_list ):
     for s in range(num_replicas): 
         # loadings_matrix = block_loadings(N=N,r=r,normalize=True) 
-        loadings_matrix = 0.5*loadings(N=N,r=r,sigma=0.1,rand_state=random_state)
+        loadings_matrix = 0.4*loadings(N=N,r=r,sigma=0.1,rand_state=random_state)
 
         # phi_dist = np.ones((N,N))
         phi_dist = random_state.normal(1,1,size=(N,N))
@@ -112,7 +118,7 @@ for index_N, N in enumerate(N_list ):
                                 Q=1,
                                 p_in=p_in,
                                 p_out=p_out,
-                                phi_distribution=phi_dist,
+                                phi_distribution=None,
                                 multiplier=VAR_spectral_radius,
                                 global_noise=1,
                                 symmetrize_phi = symmetric_phi
@@ -194,7 +200,7 @@ for index_N, N in enumerate(N_list ):
 
             for t in range(n_backtest_days_tot):
                 # print(f"backtest day {t}")
-                X_backtest_data = X_T[first_prediction_day+t-lookback_window:first_prediction_day+t] 
+                X_backtest_data = X_T[first_prediction_day+t-lookback_window:first_prediction_day+t+1] 
 
                 if estimation_model == "FNIRVAR":
                     factor_model = FactorAdjustment(X_backtest_data, r_hat, l_F)
@@ -212,7 +218,7 @@ for index_N, N in enumerate(N_list ):
                                         zmid=0  # ensures that 0 is mapped to the middle color (white)
                                         ))
                                         
-                    fig.show()
+                    # fig.show()
                     # fig.write_image(f"estimated_phi_r_hat_{r_hat}.pdf")
 
                     estimated_Xi_cov = Xi_estimated.T@Xi_estimated/T - np.identity(N)
@@ -223,6 +229,8 @@ for index_N, N in enumerate(N_list ):
                                         
                     # fig.show()
                     
+                    # print(f"Var Xi_hat : {np.var(Xi_hat)}")
+                    # print(f"common component variance : {np.var(factor_model.predict_common_component()[:,0])}")
                     predictions_t = factor_model.predict_common_component()[:,0] + Xi_hat[:] 
                     predictions[t,:] = predictions_t 
 
@@ -246,6 +254,21 @@ for index_N, N in enumerate(N_list ):
                     predictions_t = factor_model.predict_common_component()[:,0] 
                     predictions[t,:] = predictions_t 
 
+                elif estimation_model == "FactorsLASSO":
+                    factor_model = FactorAdjustment(X_backtest_data, r_hat, l_F)
+                    Xi_estimated = factor_model.get_idiosyncratic_component()
+                    idiosyncratic_model = LASSO(Xi=Xi_estimated) 
+                    if LASSO_hyperparameter_tuning == 'None' :
+                        idiosyncratic_model.fit_VARp_LASSO(alpha=LASSO_penalty[0],p=l_F)
+                    elif LASSO_hyperparameter_tuning == 'CV' : 
+                        idiosyncratic_model.fit_lasso_cv(alpha_values=LASSO_penalty)
+                    elif LASSO_hyperparameter_tuning == 'BIC' : 
+                        idiosyncratic_model.fit_lasso_bic(alpha_values=LASSO_penalty)
+
+                    Xi_hat = idiosyncratic_model.predict_next_VARp_LASSO(Xi[-1]) 
+                    predictions_t = factor_model.predict_common_component()[:,0] + Xi_hat[:] 
+                    predictions[t,:] = predictions_t 
+
                 elif estimation_model == "FNIRVAR_vs_FactorsOnly":
                     factor_model = FactorAdjustment(X_backtest_data, r_hat, l_F)
                     Xi_estimated = factor_model.get_idiosyncratic_component()
@@ -264,9 +287,14 @@ for index_N, N in enumerate(N_list ):
 
 
             targets = X_T[first_prediction_day+1:,:] 
-            mspe = np.sum((targets - predictions)**2)/((N*n_backtest_days_tot))
+            err = targets - predictions
+            mspe = np.sum((err)**2)/((N*n_backtest_days_tot))
             print(f"MSPE : {mspe}")
             mspe_values[index_N,index_T,s] = mspe 
+            sigma_err2 = np.std((err)**2,mean=mspe,ddof=1)/np.sqrt(n_backtest_days_tot)
+            print(f"Standard deviation MSPE : {sigma_err2}") 
+            std_error_values[index_N,index_T,s] = sigma_err2
+
 
             if estimation_model == "FNIRVAR_vs_FactorsOnly": 
                 mspe_factors = np.sum((targets - predictions_factors)**2)/((N*n_backtest_days_tot))
@@ -276,16 +304,20 @@ for index_N, N in enumerate(N_list ):
 
             # Create a figure and add traces for each array
             fig = go.Figure()
-            fig.add_trace(go.Scatter(x=x, y=targets[:,0], mode='lines', name='Targets'))
-            fig.add_trace(go.Scatter(x=x, y=predictions[:,0], mode='lines', name='Predictions'))
+            fig.add_trace(go.Scatter(x=x, y=targets[:,10], mode='lines', name='Targets'))
+            fig.add_trace(go.Scatter(x=x, y=predictions[:,10], mode='lines', name='Predictions'))
             if estimation_model == "FNIRVAR_vs_FactorsOnly": 
                 fig.add_trace(go.Scatter(x=x, y=predictions_factors[:,0], mode='lines', name='Predictions Factors Only'))
 
             fig.show()
             
 
-mspe_mean = np.mean(mspe_values,axis=-1)
-mspe_std = np.std(mspe_values,axis=-1)
+if num_replicas > 1:
+    mspe_mean = np.mean(mspe_values,axis=-1)
+    mspe_std = np.std(std_error_values,axis=-1)
+else:
+    mspe_mean = mspe_values[:,:,0]
+    mspe_std = std_error_values[:,:,0]
 
 np.savetxt(f"mspe_mean_rhat{r_hat}_{estimation_model}.csv", mspe_mean, delimiter=",", fmt="%.6f")
 np.savetxt(f"mspe_std_rhat{r_hat}_{estimation_model}.csv", mspe_std, delimiter=",", fmt="%.6f")

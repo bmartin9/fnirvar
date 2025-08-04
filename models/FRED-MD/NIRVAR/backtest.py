@@ -4,7 +4,7 @@ NOTE: It is assumed that the backtest_design input file is clean: no NA values a
 """
 
 #!/usr/bin/env python3 
-# USAGE: ./backtest.py <DESIGN_MATRIX>.csv config.yaml num_factors.csv 
+# USAGE: ./backtest.py <DESIGN_MATRIX>.csv config.yaml num_factors.csv lag_orders.csv
 
 import numpy as np
 import sys
@@ -22,7 +22,7 @@ with open(sys.argv[2], "r") as f:
 ###### CONFIG PARAMETERS ###### 
 SEED = config["SEED"]
 r = config["num_factors"]
-lF = config["factor_lags"]
+lF = config["lF"]
 n_backtest_days_tot = config['n_backtest_days']
 first_prediction_day = config['first_prediction_day']
 lookback_window = config['lookback_window']
@@ -39,6 +39,7 @@ idiosyncratic_model_name = config['idiosyncratic_model']
 minmax_scaling = config['minmax_scaling']
 LASSO_penalty = config['LASSO_penalty']
 LASSO_hyperparameter_tuning = config['LASSO_hyperparameter_tuning']
+varying_factor_lags = config['varying_factor_lags']
 
 
 ###### ENVIRONMENT VARIABLES ######  
@@ -71,6 +72,10 @@ N = int(N)
 if varying_factors:
     factor_csv = np.genfromtxt(sys.argv[3], delimiter=',',dtype='int')
 
+###### READ IN FACTOR LAG ORDERS ######
+if varying_factor_lags:
+    lag_order_csv = np.genfromtxt(sys.argv[4], delimiter=',',dtype='int')
+
 ###### BACKTESTING ###### 
 if minmax_scaling:
 
@@ -90,7 +95,11 @@ if minmax_scaling:
                 current_r = factor_csv[i]
             else:
                 current_r = r
-            factor_model = FactorAdjustment(X_train, current_r, lF)
+            if varying_factor_lags:
+                current_lF = lag_order_csv[i]
+            else:
+                current_lF = lF
+            factor_model = FactorAdjustment(X_train, current_r, current_lF)
             Xi = factor_model.get_idiosyncratic_component()
             idiosyncratic_model = NIRVAR(Xi=Xi,
                                         embedding_method=NIRVAR_embedding_method) 
@@ -145,7 +154,11 @@ if minmax_scaling:
                 current_r = factor_csv[i]
             else:
                 current_r = r
-            model = FactorAdjustment(X_train, current_r, lF)
+            if varying_factor_lags:
+                current_lF = lag_order_csv[i]
+            else:
+                current_lF = lF
+            model = FactorAdjustment(X_train, current_r, current_lF)
             predictions_scaled = model.predict_common_component()[:,0]
             predictions_scaled += X_train_mean[:]
             predictions_original_space = scaler.inverse_transform(predictions_scaled.reshape(1,-1))
@@ -168,16 +181,20 @@ if minmax_scaling:
                 current_r = factor_csv[i]
             else:
                 current_r = r
-            factor_model = FactorAdjustment(X_train, current_r, lF)
+            if varying_factor_lags:
+                current_lF = lag_order_csv[i]
+            else:
+                current_lF = lF
+            factor_model = FactorAdjustment(X_train, current_r, current_lF)
             Xi = factor_model.get_idiosyncratic_component()
             idiosyncratic_model = LASSO(Xi=Xi) 
             if LASSO_hyperparameter_tuning == 'None' :
-                idiosyncratic_model.fit_lasso(alpha=LASSO_penalty[0])
+                idiosyncratic_model.fit_VARp_LASSO(alpha=LASSO_penalty[0],p=lF)
             elif LASSO_hyperparameter_tuning == 'CV' : 
                 idiosyncratic_model.fit_lasso_cv(alpha_values=LASSO_penalty)
             elif LASSO_hyperparameter_tuning == 'BIC' : 
                 idiosyncratic_model.fit_lasso_bic(alpha_values=LASSO_penalty)
-            Xi_hat = idiosyncratic_model.predict_idiosyncratic_component(X_new=Xi[-1,None]) 
+            Xi_hat = idiosyncratic_model.predict_next_VARp_LASSO(Xi[-lF:]) 
             predictions_scaled = factor_model.predict_common_component()[:,0] + Xi_hat[:]
             predictions_scaled += X_train_mean[:]
             predictions_original_space = scaler.inverse_transform(predictions_scaled.reshape(1,-1))
@@ -197,7 +214,11 @@ else:
                 current_r = factor_csv[i]
             else:
                 current_r = r
-            factor_model = FactorAdjustment(X, current_r, lF)
+            if varying_factor_lags:
+                current_lF = lag_order_csv[i]
+            else:
+                current_lF = lF
+            factor_model = FactorAdjustment(X, current_r, current_lF)
             Xi = factor_model.get_idiosyncratic_component()
             idiosyncratic_model = NIRVAR(Xi=Xi,
                                         embedding_method=NIRVAR_embedding_method) 
@@ -226,7 +247,7 @@ else:
 
             print ("\033[A                             \033[A") 
 
-    elif factor_model == 'Static' and idiosyncratic_model == 'None':
+    elif factor_model == 'Static' and idiosyncratic_model_name == 'None':
         print("Only Factors")
         predictions = np.zeros((n_backtest_days)) 
         for i, day in enumerate(days_to_backtest):
@@ -236,7 +257,11 @@ else:
                 current_r = factor_csv[i]
             else:
                 current_r = r
-            model = FactorAdjustment(X, current_r, lF)
+            if varying_factor_lags:
+                current_lF = lag_order_csv[i]
+            else:
+                current_lF = lF
+            model = FactorAdjustment(X, current_r, current_lF)
             predictions[i] = model.predict_common_component()[:,0][5]
 
             print ("\033[A                             \033[A") 
@@ -251,7 +276,11 @@ else:
                 current_r = factor_csv[i]
             else:
                 current_r = r
-            factor_model = FactorAdjustment(X, current_r, lF)
+            if varying_factor_lags:
+                current_lF = lag_order_csv[i]
+            else:
+                current_lF = lF
+            factor_model = FactorAdjustment(X, current_r, current_lF)
             Xi = factor_model.get_idiosyncratic_component()
             idiosyncratic_model = LASSO(Xi=Xi) 
             if LASSO_hyperparameter_tuning == 'None' :

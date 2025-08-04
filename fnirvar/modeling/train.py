@@ -847,8 +847,62 @@ class LASSO():
                 best_model = model
 
         self.model = best_model
+
+        # ── Sparsity calculation ────────────────────────────────────────────────
+        coef_flat     = np.ravel(best_model.coef_)          # works for multi-output
+        n_total       = coef_flat.size
+        zero_tol      = 1e-8                             
+        n_zero        = np.sum(np.abs(coef_flat) <= zero_tol)
+        sparsity_frac = n_zero / n_total                    # between 0 and 1
+        print(f"Sparsity (|coef| ≤ {zero_tol:g}): "
+          f"{sparsity_frac*100:.2f}% zeros "
+          f"({n_zero} / {n_total} coefficients)")
+
+
         print(f"Penalty chosen by BIC : {best_alpha}") 
         return best_alpha, best_bic
+    
+    def make_varp_design(self, p):
+        """
+        Stack the p lags horizontally to get predictors and align targets.
+
+        Parameters
+        ----------
+        X : ndarray, shape (T, k)
+            The raw multivariate time series.
+        p : int
+            Lag order of the VAR.
+
+        Returns
+        -------
+        predictors : ndarray, shape (T-p, p*k)
+        targets    : ndarray, shape (T-p, k)
+        """
+        T, k = self.Xi.shape
+        if p >= T:
+            raise ValueError("p must be smaller than the sample length T")
+
+        predictors = np.hstack([self.Xi[p-i-1:T-i-1] for i in range(p)])
+        targets    = self.Xi[p:]
+        return predictors, targets
+    
+    def fit_VARp_LASSO(self, alpha, p):
+        X, Y = self.make_varp_design(p)
+        self.p      = p
+        self.k      = Y.shape[1]
+        self.model  = Lasso(alpha=alpha, fit_intercept=False)
+        self.model.fit(X, Y)          # fits k equations in one call
+        self.coefs_ = self.model.coef_.reshape(self.k, self.p, self.k)
+        return self
+
+    def predict_next_VARp_LASSO(self, lags):
+        """
+        One-step-ahead forecast given an array `lags` with shape (p, k),
+        ordered [x_{t-1}, x_{t-2}, …, x_{t-p}].
+        """
+        x_flat = lags.flatten()[None, :]     # shape (1, p*k)
+        return self.model.predict(x_flat)[0] # shape (k,)
+
 
     def predict_idiosyncratic_component(self, X_new: np.ndarray):
         """

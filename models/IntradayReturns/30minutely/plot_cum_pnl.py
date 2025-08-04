@@ -13,9 +13,9 @@ import plotly.io as pio
 
 # ---------- legends (edit to taste) ----------------------------------
 LEGENDS = [
-    "4 month lookback",
-    "2 month lookback",
-    "Strategy-3",
+    "FNIRVAR",
+    "Factors + LASSO",
+    "Factors Only",
 ]
 # If you pass more files than names above, the file-stem is used.
 # ---------------------------------------------------------------------

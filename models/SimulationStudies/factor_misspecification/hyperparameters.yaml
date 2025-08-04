@@ -1,0 +1,12 @@
+###### PARAMETERS #######
+seed : 4436
+N : 100 
+T : 1000 
+r : 4
+sigma_eps : 1
+num_replicas : 2
+window : 900 
+r_hat : 1
+factor_mode: "diag"             # 'iid' | 'diag' | 'series'
+factor_diag: [1,0.5,0.1,0.01]  
+

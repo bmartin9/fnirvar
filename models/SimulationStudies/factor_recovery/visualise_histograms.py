@@ -76,7 +76,7 @@ layout = go.Layout(
     paper_bgcolor='white',  # Set background color to white
     plot_bgcolor='white',   # Set plot area color to white
     font_family="Serif", 
-    font_size=11, 
+    font_size=16, 
     margin=dict(l=5, r=5, t=5, b=5),
     width=500, 
     height=350

@@ -120,7 +120,7 @@ class GenerateFNIRVAR:
         :rtype: np.ndarray
         """
         # 1) Create random P of shape (l_F, r, r) with small entries
-        diagonal_value = 0.2
+        diagonal_value = 1
         offdiag_scale = 0.1
         # P_raw = self.random_state.normal(size=(self.l_F, self.r, self.r),scale=scale) 
         # P_raw = scale*np.ones((self.l_F, self.r, self.r))
@@ -133,9 +133,9 @@ class GenerateFNIRVAR:
                     if i == j:
                         P_raw[k, i, j] = diagonal_value
                     else:
-                        P_raw[k, i, j] = self.random_state.normal(
-                            loc=0.0, scale=offdiag_scale
-                        )
+                        # P_raw[k, i, j] = self.random_state.normal(loc=0.0, scale=offdiag_scale)
+                        P_raw[k, i, j] = -0.2
+
         
 
         # 2) Build the block companion matrix
@@ -233,6 +233,7 @@ class GenerateFNIRVAR:
         # Generate shocks u_t ~ N(0, I_q)
         U = self.random_state.normal(size=(total_length, self.q))
 
+
         # Recursively compute the factor values
         for t in range(self.l_F, total_length):
             var_part = np.zeros(self.r)
@@ -266,6 +267,7 @@ class GenerateFNIRVAR:
             return X_factor
         else:
             print("NIRVAR is the idiosyncratic term")
+            print(f"eigengap : {np.sort(np.linalg.eigvals(X_factor.T@X_factor/self.T))[-self.r] - np.sort(np.linalg.eigvals(xi.T@xi/self.T))[-1]}")
             return X_factor + xi
 
 

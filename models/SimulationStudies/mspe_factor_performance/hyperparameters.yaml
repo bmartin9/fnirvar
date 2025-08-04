@@ -2,22 +2,25 @@
 SEED : 4436
 num_factors : 5
 num_estimated_factors : 5
-l_F : 5
+l_F : 2
 B : 4
 p_in : 0.9
 p_out : 0.1
 use_HPC : FALSE 
 num_common_shocks : 5
-rho_F : 0.6
+rho_F : 0.7
 generative_model : 'FNIRVAR' # One of 'FactorsOnly', 'NIRVAR', 'FNIRVAR'
-estimation_model : 'FNIRVAR_vs_FactorsOnly' # One of 'FactorsOnly', 'NIRVAR', 'FNIRVAR'
+estimation_model : 'FactorsLASSO' # One of 'FactorsOnly', 'NIRVAR', 'FNIRVAR', 'FactorsLASSO'
 lookback_window : 1000
 first_prediction_day : 1000 # first day to start making predictions (python index)
-T_list : [1050]
+T_list : [1500]
 N_list : [100]
-num_replicas : 10
+num_replicas : 1
 NIRVAR_embedding_method : 'Pearson Correlation' #One of 'Pearson Correlation' (Default), 'Precision Matrix', 'Covariance Matrix' 
 VAR_spectral_radius : 0.9
-symmetric_phi : TRUE
+symmetric_phi : FALSE
+LASSO_penalty : [0.001,0.01,0.05,0.1] # List of penalties to use in your hyperparameter grid search. 
+LASSO_hyperparameter_tuning : 'BIC' # One of 'None', 'CV' , 'BIC' 
+
 
 

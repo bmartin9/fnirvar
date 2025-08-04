@@ -46,6 +46,7 @@ alpha = config['alpha']
 beta = config['beta'] 
 beta_Sigma = config['beta_Sigma']
 Markowitz_penalty = config['Markowitz_penalty']
+Normalize_portfolio_weights = config['Normalize_portfolio_weights']
 
 ###### READ IN DATA ######
 Xs = np.genfromtxt(sys.argv[1], delimiter=',') #read in full design matrix 
@@ -76,14 +77,17 @@ if weightings_choice == 'VolMM':
         # Median over all rows up to (but not including) i, for each column
         mddv[day_idx, :] = np.median(volMM_Xs[t-lookback_window:t, :], axis=0)
     volMM_weights = np.minimum(alpha * mddv, beta) 
-    volMM_weights = volMM_weights/np.sum(volMM_weights, axis=1,keepdims=True) # normalise weights
+    if Normalize_portfolio_weights:
+        volMM_weights = volMM_weights/np.sum(volMM_weights, axis=1,keepdims=True) # normalise weights
 
     # Compute daily means and standard deviations across assets for each backtest day
     daily_means = np.mean(volMM_weights, axis=1)  # shape: (n_backtest_days_tot,)
     daily_stds  = np.std(volMM_weights, axis=1)   # shape: (n_backtest_days_tot,)
 
     mean_portfolio_weight = np.mean(daily_means)
+    print(f"mean_portfolio_weight : {mean_portfolio_weight}")
     mean_daily_std_portfolio_weight = np.mean(daily_stds) 
+    print(f"Total VolMM weights : {np.mean(np.sum(volMM_weights, axis=1, keepdims=True))}")
 
 elif weightings_choice == 'Markowitz':
     Sigma_hat = np.zeros((N,N))

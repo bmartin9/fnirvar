@@ -38,9 +38,9 @@ def process_snapshot(snap_dir: pathlib.Path, kmax: int = int(20), lF: int = 5,
 
     # 2) eigenvalue-ratio test
     # k_hat = GR(X, kmax=kmax)
-    # k_hat = int(5)
+    k_hat = int(5)
     
-    k_hat, _, _, _ = baing(X=X,kmax=kmax,jj=2) 
+    # k_hat, _, _, _ = baing(X=X,kmax=kmax,jj=2) 
 
     # 3) factor adjustment
     FA  = FactorAdjustment(X, r=k_hat, lF=lF)
@@ -49,7 +49,7 @@ def process_snapshot(snap_dir: pathlib.Path, kmax: int = int(20), lF: int = 5,
     model = VAR(F) 
     results = model.fit(maxlags=10, ic='aic') 
     lF_estimated = max(results.k_ar,1)
-    print(f"N: {N} factors {k_hat} lags {lF_estimated}") 
+    # print(f"N: {N} factors {k_hat} estimated lags {lF_estimated}") 
 
     if varying_lF:
         lF = lF_estimated

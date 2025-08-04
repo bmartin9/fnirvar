@@ -94,7 +94,7 @@ phi_evals_store = np.zeros((num_N,num_evals,num_replicas))
 for index_N, N in enumerate(N_list ):
     for s in range(num_replicas): 
         # loadings_matrix = block_loadings(N=N,r=r,normalize=True) 
-        loadings_matrix = 0.5*loadings(N=N,r=r,sigma=0.1,rand_state=random_state)
+        loadings_matrix = 0.3*loadings(N=N,r=r,sigma=0.1,rand_state=random_state)
         # print(loadings_matrix)
 
         # phi_dist = np.ones((N,N))
@@ -204,10 +204,12 @@ for index_N, N in enumerate(N_list ):
                                         
             # fig.show()
 
-            min_eval_F = np.sort(np.linalg.eigvals(X.T@X/T_max))[-r] 
+            r_eval_X = np.sort(np.linalg.eigvals(X.T@X/T_max))[-r] 
+            max_eval_X = np.sort(np.linalg.eigvals(X.T@X/T_max))[-1] 
             max_eval_Xi = np.sort(np.linalg.eigvals(Xi.T@Xi/T_max))[-1]
 
-            print(f"min eval F: {min_eval_F}")
+            print(f"rth eval X: {r_eval_X}")
+            print(f"max eval X: {max_eval_X}")
             print(f"max eval Xi: {max_eval_Xi}")
 
             eigenvalues = np.linalg.eigvals(X.T@X/T_max) 

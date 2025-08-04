@@ -107,7 +107,7 @@ def load_snap(d: pathlib.Path):
     Fbuf   = FactorBuf(pl.read_parquet(d / "F.parquet")
                            .tail(lF).to_numpy().astype(np.float32))
     xi_prev = (pl.read_parquet(d / "Xi.parquet")
-                  .tail(1).to_numpy().ravel().astype(np.float32))
+                  .to_numpy().astype(np.float32))
     tickers = pl.read_csv(d / "coverage.csv")["ticker"].to_list()
     return L, P_hat, Phi, Fbuf, xi_prev, tickers
 
@@ -117,7 +117,7 @@ def run():
                  and (last  is None or dt.date.fromisoformat(d.name) <= last)]
 
     for si, sdir in enumerate(snap_dirs):
-        L, P_hat, Fbuf, Xi, tickers = load_snap(sdir)
+        L, P_hat, Phi, Fbuf, Xi, tickers = load_snap(sdir)
         reader  = BarReader(tickers, excess=use_excess)
         preds   = []
 
@@ -159,8 +159,9 @@ def run():
 
             # forecast t+1
             f_next       = Fbuf.predict(P_hat)
-            Xi_hat = idiosyncratic_model.predict_idiosyncratic_component(X_new=xi_prev) 
-            x_pred_next  = L @ f_next + Xi_hat
+            Xi_hat = idiosyncratic_model.predict_idiosyncratic_component(X_new=xi_prev.reshape(1,-1)).reshape(-1) 
+            common_hat = L @ f_next 
+            x_pred_next  = common_hat + Xi_hat
             ts_next      = ts + ts_delta           # 30-minute-ahead time stamp
 
             # skip the synthetic 16:30 bar
