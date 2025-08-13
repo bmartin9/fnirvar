@@ -11,7 +11,7 @@ print("Searching under", parent)
 pred_files = list(parent.rglob("predictions.parquet"))
 print("Found", len(pred_files), "files")
 for p in pred_files[:10]:
-    print("  ", p)                     # show first few
+    print("  ", p)                     
 
 if not pred_files:
     sys.exit("No predictions.parquet found – check file names / depth.")
@@ -31,7 +31,7 @@ for lf in lazy_frames:
     for c in lf.columns:
         exprs.append(pl.col(c).cast(ts_dtype if c == "ts" else flt_dtype))
     lf = lf.select(exprs)
-    # add missing
+
     for c in all_cols:
         if c not in lf.columns:
             lf = lf.with_columns(pl.lit(None, dtype=flt_dtype).alias(c))

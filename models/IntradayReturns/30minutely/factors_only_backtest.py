@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # backtest.py – generate out-of-sample 30-min predictions (fixed universe)
 # --------------------------------------------------------------------------
-# • For each snapshot month, forecast ˆX_{i,t+1} with factor model only.
-# • Universe is already gap-free → never drop bars or intersect timestamps.
+# For each snapshot month, forecast ˆX_{i,t+1} with factor model only.
+# Universe is already gap-free → never drop bars or intersect timestamps.
 #
 # Output per month:
 #   models/…/backtest_outputs/<YYYY-MM-DD>/predictions.parquet
@@ -53,7 +53,7 @@ class BarReader:
                 pl.read_parquet(pf)
                   .with_columns(pl.col("ts").dt.replace_time_zone(None))
             )
-        # universe is gap-free → time-vector from any ticker
+        # universe is gap-free; time-vector from any ticker
         self.ts_vec = self.cache[self.tickers[0]]["ts"].to_numpy()
         self.loaded_ym = ym
 
@@ -66,8 +66,8 @@ class BarReader:
             ser = self.cache[tkr].filter(pl.col("ts") == ts)["log_ret"]
             if ser.len() == 1:
                 val = ser.item()
-                return float(val) if val is not None else np.nan   # ensure nan, never None
-            return np.nan                                           # bar missing ⇒ nan
+                return float(val) if val is not None else np.nan  
+            return np.nan                                           
 
 
         if not self.excess:

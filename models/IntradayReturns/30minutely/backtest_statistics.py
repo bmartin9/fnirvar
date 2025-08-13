@@ -88,7 +88,7 @@ class IntradayBenchmark:
         for t in range(self.T):
             # ── STEP 1: select tradable universe (valid preds & rets) ──────────
             valid = (~np.isnan(self.p[t])) & (~np.isnan(self.r[t]))
-            if not valid.any():                        # corner-case ①
+            if not valid.any():                        
                 gross.append(0.0)
                 net  .append(0.0)
                 trades.append(0)
@@ -117,7 +117,7 @@ class IntradayBenchmark:
             n_trades = int((dw > 0).sum())
 
             # ── STEP 5: PnL (valid returns only) ───────────────────────────────
-            g = np.dot(w[mask], self.r[t][mask]).item()    # same as nansum but no NaNs left
+            g = np.dot(w[mask], self.r[t][mask]).item()    
             n = g - self.tcost * turnover
 
             gross .append(g)
@@ -164,7 +164,7 @@ def main():
     only_real = real_ts.filter(~real_ts.is_in(pred_ts))
 
     print(f"\nTimestamps only in PREDICTIONS  ({len(only_pred)} rows)")
-    print(only_pred.head(25))          # show the first few, adjust as you like
+    print(only_pred.head(25))         
 
     print(f"\nTimestamps only in REALISED     ({len(only_real)} rows)")
     print(only_real.head(25))
@@ -186,7 +186,7 @@ def main():
 
     # ------------------------------------------------------------------
     # 1. Sharpe ratios (annualised)          ───────────────────────────
-    #    252 trading days × 12 day-bars for 30-minute frequency
+    #    252 trading days x 12 day-bars for 30-minute frequency
     ann_fact = np.sqrt(252 * 12)
     sharpe_gross = float(np.nanmean(gross) / np.nanstd(gross, ddof=1) * ann_fact)
     sharpe_net   = float(np.nanmean(net)   / np.nanstd(net,   ddof=1) * ann_fact)

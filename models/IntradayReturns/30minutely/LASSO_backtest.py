@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # backtest.py – generate out-of-sample 30-min predictions (fixed universe)
 # --------------------------------------------------------------------------
-# • For each snapshot month, forecast ˆX_{i,t+1} with factor + LASSO.
-# • Universe is already gap-free → never drop bars or intersect timestamps.
+# For each snapshot month, forecast X_{i,t+1} with factor + LASSO.
+# Universe is already gap-free → never drop bars or intersect timestamps.
 #
 # Output per month:
 #   models/…/backtest_outputs/<YYYY-MM-DD>/predictions.parquet
@@ -69,8 +69,8 @@ class BarReader:
             ser = self.cache[tkr].filter(pl.col("ts") == ts)["log_ret"]
             if ser.len() == 1:
                 val = ser.item()
-                return float(val) if val is not None else np.nan   # ensure nan, never None
-            return np.nan                                           # bar missing ⇒ nan
+                return float(val) if val is not None else np.nan   
+            return np.nan                                           
 
 
         if not self.excess:

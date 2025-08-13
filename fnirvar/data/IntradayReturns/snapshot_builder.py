@@ -55,7 +55,7 @@ def build_snapshot(month_end: dt.date):
 
     window_start = month_end - dt.timedelta(days=LOOKBACK_DAYS)
 
-    # 1️⃣ reference index from SPY for look-back ---------------------------
+    # reference index from SPY for look-back ---------------------------
     spy_files = glob.glob(str(SRC_ROOT / "SPY" / "*.parquet"))
     spy_ts = (pl.scan_parquet(spy_files)
                 .filter((pl.col("ts") >= window_start) & (pl.col("ts") <= month_end))
@@ -65,7 +65,7 @@ def build_snapshot(month_end: dt.date):
                 .get_column("ts"))
     T = len(spy_ts)                          # rows needed in look-back
 
-    # 1️⃣-bis expected rows in forward month (13 bars per day) ------------
+    #  expected rows in forward month (13 bars per day) ------------
     fwd_ym  = (month_end + relativedelta(months=+1)).strftime("%Y-%m")
     fwd_spy = SRC_ROOT / "SPY" / f"{fwd_ym}.parquet"
     if not fwd_spy.exists():
@@ -73,7 +73,7 @@ def build_snapshot(month_end: dt.date):
         return
     expected_fwd_rows = pl.read_parquet(fwd_spy).height   # ≈ 13 × trading days
 
-    # 2️⃣ scan tickers, keep only fully-covered look-back AND forward month
+    # scan tickers, keep only fully-covered look-back AND forward month
     good, matrices = [], []
     for tkr_path in SRC_ROOT.iterdir():
         tkr = tkr_path.name
@@ -104,7 +104,7 @@ def build_snapshot(month_end: dt.date):
         print(f"{month_end} → no assets with full coverage; skipping")
         return
 
-    # 3️⃣ build raw X
+    # build raw X
     X = pl.DataFrame({t: col for t, col in zip(good, matrices)})
 
     # ─── drop tickers that contain ANY NaN/Inf in the 60-day window ─────────
@@ -124,7 +124,7 @@ def build_snapshot(month_end: dt.date):
     N = len(good)           # recompute after drop
 
 
-    # 4️⃣ optional market-excess
+    # optional market-excess
     if args.excess:
         if "SPY" not in X.columns:
             raise SystemExit("SPY column missing; cannot compute excess returns")
@@ -134,11 +134,11 @@ def build_snapshot(month_end: dt.date):
             X = X.drop("SPY")
             good.remove("SPY")
 
-    # 5️⃣ optional de-mean
+    # optional de-mean
     if not args.no_demean:
         X = (X - X.mean(axis=0, keepdims=True))
 
-    # 6️⃣ write outputs
+    # write outputs
     X = X.with_columns(pl.all().cast(pl.Float32))
     X.write_parquet(out_dir / "X.parquet", compression="snappy")
     pl.DataFrame({"ticker": good}).write_csv(out_dir / "coverage.csv")
@@ -148,7 +148,7 @@ def build_snapshot(month_end: dt.date):
                 T=X.height, N=N)
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2))
 
-    print(f"{month_end} → {N} assets, {T} bars  ✓")
+    print(f"{month_end} → {N} assets, {T} bars  ")
 
 # ───────────────────────── main ─────────────────────────
 if __name__ == "__main__":

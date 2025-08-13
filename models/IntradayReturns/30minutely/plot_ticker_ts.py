@@ -29,7 +29,7 @@ args = ap.parse_args()
 
 path = pathlib.Path(args.file).expanduser().resolve()
 if not path.exists():
-    raise SystemExit(f"❌ {path} not found")
+    raise SystemExit(f" {path} not found")
 
 # ────────────────────── load & slice ───────────────────────────────────────
 cols = ["ts", args.ticker]
@@ -44,7 +44,7 @@ if args.end:
     df = df.filter(pl.col("ts") <= end_dt)
 
 if df.height == 0:
-    raise SystemExit("❌ no data in the requested range")
+    raise SystemExit(" no data in the requested range")
 
 # ────────────────────── plotly figure ──────────────────────────────────────
 fig = go.Figure()

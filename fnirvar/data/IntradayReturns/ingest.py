@@ -23,7 +23,7 @@ EXPECTED_MINUTES = {391, 210}
 
 # ───────────────  logging for row-count anomalies  ────────────────
 logging.basicConfig(
-    filename="ingest_warnings.log",   # file will be created/append-to
+    filename="ingest_warnings.log",   # log file for warnings
     filemode="a",
     level=logging.WARNING,
     format="%(asctime)s  %(levelname)s  %(message)s",
@@ -106,7 +106,7 @@ def write_day(df: pl.DataFrame, asset: str, date_str: str) -> None:
 
 # --------------------------------------------------------------------------- #
 # ────────────────────────────────────────────────────────────────────────────
-#  ARCHIVE-LEVEL WORKER  (temp-folder method, works on every py7zr version)
+#  ARCHIVE-LEVEL WORKER  (temp-folder method)
 # ────────────────────────────────────────────────────────────────────────────
 def process_archive(archive_path: pathlib.Path) -> None:
     asset = TICKER_RE.search(archive_path.stem).group(1)
@@ -121,7 +121,7 @@ def process_archive(archive_path: pathlib.Path) -> None:
                     z.extract(path=tmpdir, targets=[csv_name])
                     csv_path = pathlib.Path(tmpdir) / csv_name
 
-                    # ——— NEW: skip zero-byte members ————————————————
+                    # ——— skip zero-byte members ————————————————
                     if csv_path.stat().st_size == 0:
                         logging.warning(
                             "Ticker %s  empty CSV skipped  (%s)",
@@ -129,7 +129,7 @@ def process_archive(archive_path: pathlib.Path) -> None:
                         )
                         os.remove(csv_path)
                         continue
-                    # ————————————————————————————————————————————————
+                    # ——————————————————————————————————————————————
 
                     with csv_path.open("rb") as fh:
                         date_str, df_day = load_day_csv(fh.read(), csv_name)

@@ -103,7 +103,7 @@ def resample_asset(asset: str, bar: str):
         grp.drop("ym").write_parquet(out_root / f"{ym}.parquet",
                                      compression="snappy")
 
-    print(f"[{asset}]  ✓  wrote {bars.height:,} bars")
+    print(f"[{asset}]   wrote {bars.height:,} bars")
 
 # ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":

@@ -8,8 +8,8 @@ Usage
 
 Notes
 -----
-• If the file fits comfortably in RAM, the default (pandas) path is simplest.
-• For very large files, switch on the --stream flag to use a memory-friendly
+If the file fits comfortably in RAM, the default (pandas) path is simplest.
+For very large files, switch on the --stream flag to use a memory-friendly
   PyArrow streaming loop.
 """
 
@@ -20,7 +20,7 @@ import pandas as pd
 def pandas_count(path: str) -> None:
     df = pd.read_parquet(path)
     nan_total = df.isna().values.sum()
-    cell_total = df.size                      # rows * columns
+    cell_total = df.size                     
     pct = nan_total * 100 / cell_total
     print(f"Total NaNs   : {nan_total:,}")
     print(f"Percentage   : {pct:,.4f} %  (of {cell_total:,} cells)")
